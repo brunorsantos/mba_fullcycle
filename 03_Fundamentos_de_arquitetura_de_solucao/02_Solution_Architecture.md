@@ -66,6 +66,25 @@ Uma boa arquitetura de solução abrange os casos de uso de negócios, a soluç�
 
 TCO (Total cost of ownership), nao se trata apenas do custo para desevolver (Muitas empresas erram ao levar apenas isso em consideracao). vai abrangir tambem o custos de manter, corrigir e atualizar.
 
+# Observabilidade
+
+A Capacidade de monitorar o estado interno de um sistema
+
+## 3 Pilares da observabilidade
+
+1. Métricas: O Pilar dos Dados Quantitativos
+
+As métricas representam dados quantitativos que descrevem o estado e o desempenho de um sistema em um determinado momento. Elas incluem informações como CPU, memória, uso de rede, solicitações por segundo e muito mais. As métricas são essenciais para monitorar o desempenho geral do sistema e identificar tendências ao longo do tempo. Ao analisar métricas, as equipes de operações podem detectar anomalias, prever capacidades futuras e otimizar recursos para garantir uma experiência contínua para os usuários finais.
+
+2. Logs: O Pilar da Narrativa Detalhada
+
+Os logs consistem em registros detalhados de eventos e atividades que ocorrem em um sistema. Eles oferecem uma narrativa detalhada do que está acontecendo em um determinado momento, permitindo que as equipes rastreiem eventos específicos, identifiquem problemas e compreendam o contexto em que ocorreram. Os logs são cruciais para investigações de incidentes, solução de problemas e conformidade regulatória. Com ferramentas avançadas de análise de logs, as equipes podem extrair insights valiosos e tomar medidas proativas para evitar interrupções no sistema.
+
+3. Traces: O Pilar da Visibilidade End-to-End
+
+Os traces, ou rastros de execução, fornecem uma visão detalhada do fluxo de uma solicitação através de um sistema distribuído. Eles capturam informações sobre cada etapa da jornada de uma solicitação, incluindo tempo de resposta, latência, chamadas de serviço e muito mais. Os traces são essenciais para entender o desempenho de sistemas complexos, como arquiteturas de microsserviços, onde uma única solicitação pode percorrer várias camadas de serviços. Com traces, as equipes podem identificar gargalos, entender relacionamentos entre componentes e otimizar o desempenho de ponta a ponta.
+
+
 # TCO (Total cost of ownership)
 
 - Métrica financeira que representa o custo total de comprar, desenvolver e operar uma solução ao longo do tempo.
@@ -138,3 +157,52 @@ SA: define a estrutura, características, comportamentos e relações entre um s
 - Considera restrições e pressupostos que podem influenciar no design da solução
 
 # Dominio e contextos
+
+
+- Trabalhar em sistemas enteprise exige entendimento apropriado do negocio
+
+- Ver o negocio pelo ponto de vista do participantes (Vendedor, parceiro, diferente participantes )
+    - Cada area tem um visao diferente, cultura diferente. é preciso ver a na visao deles
+
+- Como os contextos se comunicam e qual linguagem
+
+## Linguagem
+
+A mesma coisa em diferentes areas pode ter nomes diferentes
+
+![alt text](image-1.png)
+
+Criar um glossario por area pode ser útil
+
+# Lei de Conway
+
+A Lei de Conway é um princípio que afirma que o design de um sistema é influenciado pela estrutura organizacional do grupo que o produz. Isso significa que a estrutura de comunicação de um grupo será refletida na estrutura dos sistemas que eles criam. A arquitetura de um sistema reflete os limites sociais do grupo que o criou.
+
+Ou seja, a estrutura de uma solucao de software espelhará a estrutura de comunicacao da organizacao que a construiu
+
+# View e viewpoints
+
+- Uma visão (view) é uma representação de um ou mais aspectos estruturais de uma arquitetura que ilustra como a arquitetura aborda uma ou mais questões mantidas por um ou mais de seus stakeholders.’
+
+- Um ponto de vista (viewpoint) é uma coleção de padrões, modelos e convenções para construir um tipo de visão. Ele define as partes interessadas cujas preocupações são refletidas no ponto de vista e nas diretrizes, princípios e templates para a construção de seus pontos de vista.
+
+
+A ideia é ajudar o arquiteto se comunicar por diferentes pontos de vista
+
+![alt text](image-2.png)
+
+É possivel criar varias visoes a partir de pontos de vista diferentes de um cenario. 
+
+- Logico (Focado em condicoes e regras)
+- Desenvolvimento (Codigo, design)
+- Fisico (Armazenar dados, escala, servidos)
+- Processo (Processo, retentativas, onde manda email, etc)
+
+[The “4+1” ViewModel of Software Architecture](https://www.researchgate.net/publication/220018231_The_41_View_Model_of_Architecture)
+
+
+# Risco vs Documentação
+
+- Para avaliar a necessidade de ter ou quantidade de documentacao, pode ser avaliar o risco.
+
+Quao mais complexo o sistema e arriscado de termos problemas (inclusive pela falta de documentacao), maior a chance
