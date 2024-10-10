@@ -204,3 +204,70 @@ No geral, voce pede para lockar um path, caso já esteja locakado será retornad
 Ex: 
 
 ![alt text](image-14.png)
+
+# Configuration
+
+
+- Configurações de uma aplicação mudam a qualquer momento
+- Como mudar uma senha de banco de dados, credenciais de email, etc.. Sem ter que reiniciar totalmente a aplicação ou refazer o deploy?
+
+![alt text](image-15.png)
+
+A aplicacao vai ter um endpoint /configuration. Esse endpoint, vai ser preparado para que possa receber configurações. 
+Então, você vai ter esses settings, um serviço de configuration. Ele vai mandar uma requisição para o /configuration que vai receber essa requisição, e irá substituir, vai dar um boot somente nessas configurações. 
+
+Assim, você não é ncessario rebootar a sua aplicação, não precisa refazer o deploy. 
+
+Essa requisição aqui pode ser feita independente de protocolo. Normalmente, a se usa HTTP, mas, por exemplo, você pode estar consumindo uma fila.
+
+# Secret Management
+
+- Credenciais não podem ficar “voando" na empresa
+- Processos para rotacional credenciais são importantes
+- Serviços gerenciados e soluções ajudam nessa tarefa
+    - Hashicorp Vault
+    - AWS Secret Manager
+        - Armazenamento de secrets
+        - Rotacionamento automáticos de secrets nos serviços como RDS.
+        - SDK para recuperação dos secrets em tempo de execução
+
+Os as a service que fornecem esse servico tem todo um processo de criptografia. Para obter as credencias, em diversos ambiente diferentes voce daria um get com uma key que retorna as credenciais
+
+# Circuit breaker
+
+![alt text](image-16.png)
+
+Numa analogia como um dijuntor... Quando recebe uma carga eletrica muito pesada ele cai e nao deixa passar mais energia, de forma a proteger os eletrodomesticos
+
+O Circuit Breaker no desenvolvimento no mundo da tecnologia, ele funciona da mesma forma.
+
+O Microsserviço 1 manda varias requisiçoes para o Microsserviço 2, que pode comecar a ficar lento e comecar a travar. Se esse comportamento se mantem o Microsserviço 2 pode ficar ainda mais lento, deixando o Microsserviço 1 lento tambem, gerando um efeito dominó e todo ecossistema.
+
+Pior que um microsserviço fora do ar, é um microsserviço lento. e um microsserviço estiver fora do ar,  quando você manda uma requisição, você já recebe ali connection refused, já recebe um erro 500, já recebe qualquer coisa, e você toca a sua vida com um plano de contigencia
+
+Sendo assim o circuit breaker lida com isso com os estados:
+
+- Fechado
+    - Tudo está ok. Mantem a comunicao normal
+- Aberto
+    - Quando o microsserviço 1 vai mandar uma mensagem para o 2, ele não consegue estabelecer a comunicação ou o microsserviço 2 diz: “Não vou receber mais nenhuma requisição”, e daí o microsserviço 1 toca a vida
+- Meio aberto
+    - Apos o circuito aberto, para fazer a recuperacao total. o microsserviço 1 envia uma nova requisicao e caso nao tenha resposta e espera um tempo para permitir nova tentativas. Apos esse tempo, caso tenha uma tentativa com sucesso e vai gradativamente tentando mais com o estado meio aberto
+
+Existem formas de trabalhar com o Circuit Breaker. Uma forma é você trabalhar no Circuit Breaker, no Microsserviço que está recebendo a requisição. Você pode colocar um proxy na frente, pode colocar algumas regras, que na hora que você está mandando a requisição, o Microsserviço 2 para de atender essas requisições. Essa é uma opção. A outra opção é fazer isso no Microsserviço 1, ou seja, você manda um monte de requisição e aquele cara não está respondendo, então você para de mandar aquela requisição, espera e manda de novo para ver.
+
+A forma mais comum de acontecer é que o Circuit Breaker seja implementado pelo desenvolvedor, e é algo que eu não recomendo. É melhor você ter um proxy que vai tomar conta desses tipos de coisas
+
+# Sequencing
+
+![alt text](image-17.png)
+
+Um id nao pode ser repetido entre o ecossistema de microsservicos. 
+
+Existem muitas empresas que lá no início já trabalhavam com IDs sequenciais. Mas mesmo hoje com UUID, matematicamente existe a chance de sair um UUID repetido.
+
+Existem muitas empresas que vieram do momento que o ID era sequencial, e o que acontece? Para evitar IDs que sejam colididos, você tem um serviço de Sequencing. Ao invés de você gerar o ID na sua máquina, no seu microsserviço, você vai acessar um serviço que vai gerar para você o ID. Então, o microsserviço 1 chamou o serviço de Sequencing e o serviço de Sequencing gerou o ID 1. Aqui gerou o ID 2, aqui gerou o ID 3 e assim a coisa vai acontecendo.
+
+Quando você bate nesse serviço de Sequencing, o que acontece? Esse serviço tem o seu banco de dados, ele consegue trabalhar de forma atômica, ele evita qualquer tipo de concorrência que vai gerar IDs repetidos e ele tem que ser extremamente performático, porque todo mundo vai estar batendo nele.
+
+Ele vai guardar essas informações e ele vai guardar, por exemplo, qual o microsserviço que acessou e pediu aquela Sequencing e qual foi o momento que isso aconteceu. E, obviamente, ele é um serviço feito especificamente para aguentar esse tipo de concorrência, porque ele não pode também gerar IDs repetidos.
