@@ -271,3 +271,102 @@ Existem muitas empresas que vieram do momento que o ID era sequencial, e o que a
 Quando você bate nesse serviço de Sequencing, o que acontece? Esse serviço tem o seu banco de dados, ele consegue trabalhar de forma atômica, ele evita qualquer tipo de concorrência que vai gerar IDs repetidos e ele tem que ser extremamente performático, porque todo mundo vai estar batendo nele.
 
 Ele vai guardar essas informações e ele vai guardar, por exemplo, qual o microsserviço que acessou e pediu aquela Sequencing e qual foi o momento que isso aconteceu. E, obviamente, ele é um serviço feito especificamente para aguentar esse tipo de concorrência, porque ele não pode também gerar IDs repetidos.
+
+# API Gateway
+
+Considerando diversos microsservicos hoje em dia, com cada um tendo seu papel na organizacao. Els muitas vezes tem que ser acessados de fora da sua organizacaoo, ou serja diretamente pelo cliente. Fazendo o cliente ter que acessar uma rota ou um subdominio.
+
+Agora, imagina que o carrinho de compras está em um serviço que tem um IP, o checkout está em outro, o catálogo de produtos está em outro, a busca está em outro, e tudo isso são serviços diferentes. Já pensou você ficar gerando um subdomínio para cada pedaço ou um IP para cada pedaço para o usuário acessar? E, além disso, você acaba expondo claramente para o seu usuário quais são os seus Endpoint que você acaba tendo.
+
+Api Gataway serve para centralizar essas requisiçoes.
+
+- Centralizador de requisições
+- Roteamento
+    - É possivel parametrizar por exemplo pelo endpoint jogando para um servico
+- Autenticação
+    - Da para centralizar a politica de autenticação
+    - Servico sabe se vier do api gateway está seguro
+- Conversão de dados
+    - Da para melhorar compatibilidade com servicos antigos que aceitam XML, convertendo um json na entrad
+    - Pode incluir um corretation Id por exemplo
+- Cabeçalhos
+- Throttling
+    - Segurar um pouco de requisicoes dependendo do estado
+- Rate Limit
+
+
+Existem por exemplos plugins para APi gataway (parecar lambda functions por exemplo)
+
+![alt text](image-18.png)
+
+# Event Driven Architecture
+
+- Evento acontecem no passado
+    - Event Notification
+        - Apenas um notificacao que algo aconteceu, normalmente pequeno (ID=1, status=notificado), serve apenas para avisar algo. Controla mudanca de estado
+    - Event Carried State Transfer
+        - Traz dados completos (Dados da compra, parcela). Servico precisa guardar esses dados. Ex: Evento da casa comparada junto com a escritura
+    - Event Sourcing
+        - Grava tudo que acontece(Todas as mudancas de estado). Assim seria possivel refazer todo processamento. (Como se fosse ppossivel reprocessar tudo que está no extrado de conta bancaria)
+- Um evento emitido pode ser o gatilho de entrada para um outro sistema
+- Coreografia vs Orquestração
+    - Coreografia: Cada sistema por si tem seu gatilho individual por diversos eventos e possivelmente tendo reacoes em cadeia com outros eventos e sistema
+    - Orquestração: Tem um orquestador que preocupa em manter algumas ordens de eventos(inclusive para desfazer algo)
+
+Toda vez que acontece um evento ele é publicado em um message broker, que vai disponibilizar essa mensagem para outros sistemas que vão fazer seu processamento
+
+# Publish-Subscribe
+
+A ideia é ter topico ou canal que recebe um publicacao e publica ela.
+
+Pode ser como ser uma das formas formas de lidar com eventos do EDA
+
+Ex: Uma compra aprovada que interessa a diversas mensagens. O sistema A so envia para o topico (Nao preocupando com todo mundo que precisar conhecer o eventos). Os outros sistemas que se preocupam em consumir o topico
+
+![alt text](image-19.png)
+
+# BFF - Backend for frontend
+
+Voce cria um backend que vai servir ao frontend, trazendo apenas infos necessarias para o Front. Ex: Um backend para mobile que traz menos informacoes que o backend para desktops(considerando ate limitacoes de bando de celulares)
+
+Sendo assim o BFF no final do dia, é uma aplicação que faz consultas internas para os seus serviços. Em que o BFF só retorna as informacoes necessarias para aquele device que se está trabalhando.
+
+![alt text](image-20.png)
+
+Pode se utilizar a ideia de BFF utilizando GraphQL, em que se pode escolher as informacoes necessarias a serem retornadas.
+
+
+# Sidecars
+
+Uma aplicação que auxilia na sua aplicação inicial e que fica colada junto com ela.
+
+- Aplicações auxiliares na aplicação principal
+- Coleta de logs
+- mTLS
+- Controle de tráfego
+
+![alt text](image-21.png)
+
+# Service Mesh
+
+> Uma malha de serviço é uma camada de infraestrutura dedicada que você pode adicionar assuas aplicações. Ele permite adicionar recursos de forma transparente, como observabilidade, gerenciamento de tráfego e segurança, sem adicioná-los ao seu próprio código
+
+Service mesh utiliza a idea de sidecar
+
+## Istio
+
+- Gerenciamento de tráfego
+    - Permite e bloqueia acesso direto
+    - Permite acesso exeterno
+    - Configura retentativa
+- Segurança
+- Policy enforcement
+- Observabilidade
+    - Ver degradacao de servicos
+- Extensibilidade
+    - Circuit breaker
+
+
+![alt text](image-22.png)
+
+
