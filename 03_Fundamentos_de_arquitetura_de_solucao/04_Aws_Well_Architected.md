@@ -40,7 +40,7 @@ falou em operação você tem que pensar no dia a dia. Operação é o chão de 
 - Faça mudanças frequentes, pequenas e reversíveis
     - Menos chance de problemas
 - Refine os procedimentos de operações com frequência
-    - Melhorar um pouco a cada atuividades que sao feitas manuais na operacao
+    - Melhorar um pouco a cada dia atividades que sao feitas manuais na operacao
 - Antecipe falhas
     - Com frequencia avaliando e testando falhas, sabendo que elas vão acontecer
 - Aprenda com todas as falhas operacionais
@@ -190,3 +190,20 @@ Ou seja, fazer mais gastando menos
     - Tudo tem que ser logado para ajudar nas decisoes, medir como está
 - "Melhorar durante os dias de jogo”
     - Cada dia que passa, posso sempre estar procurando melhorar algo
+
+
+# 10 princípios para aplicações Azure
+
+- Design for self healing
+- Deixa as coisas redundantes
+- Minimize a coordenação
+- Desenhe para escalar
+- Particionamento
+    - Separar centro de custo
+- Design for operations
+    - Crie formas de operacao baseado em automacoes, observabilidade
+- Use serviços gerenciados
+- Use a melhor data storage para o melhor trabalho
+    - Aliar melhor forma de banco de dados e armezanar arquivos
+- Design for evolution
+- Construa para as necessidades do negócio
