@@ -4,6 +4,10 @@
 
 - De uma forma geral, ele é um processo para gente definir a arquitetura, não é apensar desenhar a arquitetura
 
+https://link.excalidraw.com/readonly/05gRMYJUyZ4FfzRyZ1cF
+
+
+
 # Importancia
 
 - Pensar na arquiteruta de forma intencional
@@ -41,7 +45,7 @@
 - Estimativa e capacidade
     - Ex: Quantos requests, Quantas compras, Picos de acesso
 - Modelagem de dados
-    - Espeficar pelo menos a principais relacoes
+    - Especificar pelo menos a principais relacoes
     - Tipo de banco de dados
 - API Design
     - Aqui os stakeholders vao entender quais sao a principais funcionalidade
@@ -125,3 +129,41 @@ Outra coisa importante, é o quanto de gravacao que sistema faz comparado com le
 Outra coisa é definir que o sistema pode ter picos de acessos. Como vendas de eventos muito grandes e com muita procura
 
 ![alt text](image-3.png)
+
+## Plano de capacidade
+
+Essa parte nos mostra, tecnicamente, por exemplo, quanto de request o sistema vai receber, quanto de bundle o sistema vai ter, qual vai ser o throughput, quanto vai ser de storage que eu vou ter que ter para um ano etc.
+
+Existem guidelines pra fazer aproximar e calcular mais rapido. Usando notação cientifica
+
+Cola
+
+![alt text](image-4.png)
+
+
+Geralmente se pensa em 
+
+- Request por segundo
+- Banda
+- Storage
+
+### Requests
+
+![alt text](image-5.png)
+
+Podemos arredondar o numero de segundos em um dia para 100.000 e usar a notacao cientifica para ajudar como 10^5
+
+Sendo assim no exemplo que temos 1 milhao de usuarios e cada um fazendo 5 requisicoes por dia teriamos:
+
+
+![alt text](image-6.png)
+
+Considerando tambem um decimo de requests de escritas e o restante de leitura
+
+### Compras
+
+![alt text](image-7.png)
+
+### Bandwith
+
+![alt text](image-8.png)
