@@ -6,7 +6,7 @@
 
 https://link.excalidraw.com/readonly/05gRMYJUyZ4FfzRyZ1cF
 
-
+[Lib excalidraw](<library (1).excalidrawlib>)
 
 # Importancia
 
@@ -167,3 +167,34 @@ Considerando tambem um decimo de requests de escritas e o restante de leitura
 ### Bandwith
 
 ![alt text](image-8.png)
+
+### Storage
+
+Na hora de calcular o storage, levar em conta o replication-factor (numero de replicas a serem utilizadas)
+
+![alt text](image-9.png)
+
+Lembrar do arredondamento de quantos segundos tem um dia: 10ˆ5
+
+![alt text](image-10.png)
+
+Para calcular os storage por dia, ano, etc. Vale a pena transformar para GB. Usando o racional de MB para GB ou MB para TB
+
+![alt text](image-11.png)
+
+# Plano de capacidade na pratica
+
+> Olá,
+> 
+> Agora é a sua vez de calcular o plano de capacidade do sistema.
+? 
+> Os dados necessários para o cálculo são os seguintes:
+> 
+> - 1Mi DAU (Daily Active Users)
+> - Cada usuário faz 1 requests
+> - Cada request resulta em 20KB
+> - Reads vs Writes: 9:1
+> - Replication factor 3
+> 
+> Use as anotações feitas nas aulas e responda o questionário a seguir
+
