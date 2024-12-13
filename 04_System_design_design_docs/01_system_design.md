@@ -198,3 +198,42 @@ Para calcular os storage por dia, ano, etc. Vale a pena transformar para GB. Usa
 > 
 > Use as anotações feitas nas aulas e responda o questionário a seguir
 
+## Plano de capacidade
+
+### Requests
+
+RPS = 10ˆ6(DAU) * 1 (um request por dia de cada user) / 10ˆ5
+
+RPS = 10ˆ6-1
+
+RPS = 10
+Writes = 1 RPS
+Reads = 9 RPS
+
+### Bandwith
+
+10RPS * 20KB = 200KB/S
+
+### Storage 
+
+> Writes per sec * request size * replication factor
+
+Storage per Sec 
+- 1 RPS * 20KB * 3 = 60KB/S
+- 0,06MB/S
+
+Storage por dia:
+- Storage per sec * 10ˆ5(sec por dia) * 3
+- 20 * 10ˆ5 * 3= 6*10ˆ6KB
+- 6 * 10ˆ3 MB
+- 6 GB
+
+Storage por ano:
+- Storage per sec * 3.65 * 10ˆ7(sec por dia) * 3
+- 20 * 3.65 * 10ˆ7 * 3
+- 219 * 10ˆ7 KB 
+- 21,9 * 10ˆ8 Kb
+- 21,9 * 10ˆ5 MB
+- 21,9 * 10ˆ2 GB
+- 2190 GB
+- 2,19 TB
