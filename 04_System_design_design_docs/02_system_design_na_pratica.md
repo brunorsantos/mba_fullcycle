@@ -89,3 +89,25 @@ Um mongo ja seria demais, guardar um documento inteiro apenas para algo mais key
 Ao colocar o resumo se pode colocar as constraints no caso dos bando relacionais
 
 ![alt text](image-21.png)
+
+
+## API Design
+
+Serve para ajudar a perceber como as operacoes vão funcionar. 
+
+No nosso caso, a gente precisa mostrar as principais operacoes. Sendo bom tambem detalhar como vai ficar os responses.
+
+![alt text](image-22.png)
+
+## System Design /Serveless
+
+Podemos ter o design mais focado na arquitetura do sistema.
+Em, que nesse caso considerando um arquitetura serverless, seria no formato:
+
+![alt text](image-23.png)
+
+## Metricas e monitoramento
+
+Todo sistema que desenvolvemos temos que ter na cabeça: Metricas e monitoramento.
+
+![alt text](image-24.png)
