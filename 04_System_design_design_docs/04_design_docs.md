@@ -59,7 +59,7 @@ Dicas
 
 ## Escopo e Contexto
 
-Explicação:  Descreve o cenário o qual o sistema está inserido, os motivadores da escrita do documento e outras informações para entendimento do contexto onde o
+Descreve o cenário o qual o sistema está inserido, os motivadores da escrita do documento e outras informações para entendimento do contexto onde o
 problema está inserido (Tipicamente contém informações de tecnologia atual, dívidas técnicas etc).
 
 O objetivo é que os leitores sejam atualizados, mas algum conhecimento prévio pode ser assumido e informações detalhadas podem ser vinculadas.
@@ -155,4 +155,34 @@ Dicas
     - Pontos que ainda não foram definidos ou ainda são desconhidos. 
 
 # Ferramentas na pratica
+
+# Referencias
+
+Youtube - Cássio Botaro:
+
+https://www.youtube.com/cassiobotaro
+
+ 
+
+Companies that use RFCs or Design Docs:
+
+https://blog.pragmaticengineer.com/rfcs-and-design-docs/
+
+ 
+
+How to write an effective design document:
+
+https://rinaarts.com/how-to-write-an-effective-design-document/
+
+ 
+
+Uma introdução aos Design Docs:
+
+https://medium.com/inside-picpay/uma-introdu%C3%A7%C3%A3o-aos-design-docs-8590f28f4cc1
+
+ 
+
+Design Docs at Google:
+
+https://www.industrialempathy.com/posts/design-docs-at-google/
 
