@@ -54,6 +54,14 @@ Ao falar de estrutura arquitural estamos preocupando imediatamente com a razao d
   - Build  
   - Deployment  
 
+## Producao vc Consumo de dados
+
+![alt text](image-7.png)
+
+É interessante por exemplo separar os modulos do produtor do consumo em um aplicacao. Mesmo que as duas vao usar a mesma lib, pois assim estaremos gerando acoplamento, pois um terá influencia sobre o outro.
+
+E dependendo(caso nao exista por exemplo um fluxo consome/faz algo e depois produz), deve ser separar em workloads diferentes. Isto é 2 executaveis diferentes para um nao interferir sobre o outro.
+
 ## Efeito "Ivory Tower"
 
 - Arquitetos têm que andar junto ao time de desenvolvimento  
