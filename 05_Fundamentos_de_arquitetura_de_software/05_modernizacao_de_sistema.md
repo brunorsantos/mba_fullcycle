@@ -95,3 +95,16 @@ Para arquitera de transicao é muito importante trabalhar com feature-toogle, tr
 - Aprenda com quem já fez, afinal já existe um sistema.  
 - Tenha conversas duras sobre prioridades, lei do Freitas:  
   "Trate o sistema como o corpo humano, defina prioridades de funções".  
+
+
+# Arquitetura de transicao
+
+- Voce fatalmente tera desperdicio
+    - Alinhar isso bem e deixando claro o pq
+
+- Coisas serao construidas para serem descartadas em pouco tempo
+
+- Desapegue de solucoes perfeitas nesse momento
+
+- Alinhe quais funcoes de negocio e sistemicas ficarão de fora nessa rodada
+
