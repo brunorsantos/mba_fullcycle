@@ -40,3 +40,71 @@ Toda vez que vc desenvolve o software vc tem que estar sempre com olho no futuro
     - Você mudou e quebrou alguma coisa sem perceber o porquê. Ou mudou o contrato da sua API sem nenhuma razão e quebrou todo mundo que tava te consultando ou qualquer coisa desse tipo
 
 ![alt text](image-9.png)
+
+# Acoplamento aferente vc eferente ou fan-in vc fan-out
+
+![alt text](image-10.png)
+
+- Componentes aferentes normalmente possuem um nível de risco crítico, pois afetam diretamente outros componentes. Logo, atenção dobrada ao criar e **manter** esses tipos de componentes.  
+
+- Componentes eferentes, por dependerem diretamente de outros componentes, normalmente estão mais propensos a falha, pois dependem diretamente do bom funcionamento de outros componentes.  
+
+# Metrificando instabilidade
+
+- Instabilidade = Fan out / (Fan-in + Fan-out)  
+- Range de 0-1  
+- Quanto menor o valor mais estável  
+- Quanto maior o valor menos estável  
+
+![alt text](image-11.png)
+
+
+- Instabilidade = Fan out / (Fan-in + Fan-out)
+- Para componente Cc = 1 / (3 + 1) = 1/4
+
+Componentes Core precisam ter instabilidade baixa, senao é vai repassar muita instabilidade para quem depende dele
+
+# Desacoplando (Componentes abstratos)
+
+![alt text](image-12.png)
+
+- Trabalhando com componentes abstratos, você consegue diminutir muito o nível de acoplamento entre os seus componentes.
+
+- Quando eu estou falando de interface de uma classe(que tambems pode ser um componente que faça interface com outro componente) tonrando essas classes abstratas, eu consigo diminuir a instabilidade no meu sistema, porque eu posso ter um componente que é estável e ele vai depender diretamente de uma abstração. Essa abstração pode ser uma interface, e essa interface não muda, assim, eu estou estável. Mas ao mesmo tempo, eu posso ter um outro componente que vai precisar ter mais mudanças, mas se ele falar a mesma linha… a mesma língua que a minha interface, esse cara está tudo “ok”. Então, quando você começa a perceber dessa forma, você começa a ver que realmente, na maioria das vezes, quando a gente não depende de implementações concretas e a gente depende de abstrações, normalmente é isso que acaba fazendo com que o nosso sistema garanta mais estabilidade.
+
+## Exemplo prático
+
+Imagine um sistema de pagamento online:
+	1.	Stable: Um módulo de validação de transações que não muda, pois as regras são fixas.
+	2.	UServer: Uma interface IPaymentProcessor que define operações como Authorize, Capture, Refund.
+	3.	Flexible: Implementações concretas dessa interface, como PaypalProcessor ou StripeProcessor, que podem mudar independentemente.
+
+	•	Se você quiser adicionar suporte para outro provedor, por exemplo, SquareProcessor, basta implementar a interface IPaymentProcessor. Assim, o sistema permanece estável.
+
+# Lei de Postel
+
+> "Seja conservador no que você faz, mas seja liberal no que você aceita dos outros”
+
+- Crie sistemas que sigam padrões ao enviar informações  
+- Seja flexível e tolerante ao receber informações que possam ser ligeiramente diferentes do especificado  
+
+Criar sistemas que sigam padrões ao enviar informações. Toda vez que você mandar uma informação, quando alguém vai receber uma informação sua, você tem que seguir padrão. Você define uma especificação, você define o protocolo, você define o formato, você cria um esquema, você trabalha realmente de uma forma muito pesada em especificar, em documentar, para enviar dados para outros sistemas.
+
+Por outro lado, você vai ser mais acessível e mais tolerante ao receber informações que possam ser ligeiramente diferentes do especificado.
+
+Ex: Eu vou mandar um JSON de obrigado para o cara, e eu vou falar que o total da compra é 10, então, eu vou mandar o 10 ali como inteiro, por exemplo. Agora, se o cara manda para mim o valor 10, “numa string”, o meu sistema tem que ser tolerante a isso e conseguir inferir que, por exemplo, aquele 10 não era uma string, mas sim um inteiro
+
+# Leis de Lehman/ Belady (1974)
+
+- Lei da Mudança Contínua: Um sistema de software deve se adaptar às mudanças em seu ambiente, caso contrário, sua ecácia diminuirá ao longo do tempo.
+    - Se seu software ta parado a muito tempo, tem outra coisa atendendo a sua empresa
+
+- Lei do Crescimento da Complexidade: À medida que um sistema evolui, suacomplexidade tende a aumentar, a menos que haja um esforço explícito para reduzi-la.
+    - Quando mais vc mexe, mais complicado vai ficando seu software
+    - Evita aumentar complexidade fazendo uma luta explicita contra ela
+
+- Lei da Conservação da Familiaridade: O conteúdo global de um sistema desoftware deve ser mantido em um nível que seja familiar para os desenvolvedores envolvidos na sua evolução.
+    - Software nao pode ficar estranho para membros do time
+
+- Lei da Conservação do Esforço: O esforço total para implementar e manter um sistema de software aumentará ao longo do tempo, mesmo que a quantidade de funcionalidade adicional permaneça constante.
+    - Quanto maior o software vai ficando, o esforço vai ficar maior para trabalhar nele
