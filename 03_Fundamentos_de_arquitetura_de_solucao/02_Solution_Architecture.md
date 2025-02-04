@@ -1,4 +1,4 @@
-# O que é arquiterura de solucao
+# O que é arquitetura de solucao
 
 Processo de definição da estrutura, componentes, módulos, interfaces de uma solução de software para satisfazer requisitos funcionais e não funcionais bem como seu comportamento.
 
@@ -88,10 +88,10 @@ Os traces, ou rastros de execução, fornecem uma visão detalhada do fluxo de u
 # TCO (Total cost of ownership)
 
 - Métrica financeira que representa o custo total de comprar, desenvolver e operar uma solução ao longo do tempo.
-    - Pode estar na desenvolvimento
+    - Pode estar no desenvolvimento
     - Na compra
     - No suporte
-    - Custos de ingra
+    - Custos de infra
     - Pode ser impacto de um requisito nao funcional que te afeta em custo (ex: gateway de pamento lento que atrapalha vendas)
 - Não inclui apenas o preço inicial da solução, mas também os custos de manutenção.
     - As vezes voce ate tem a solucao pronta, ou a ideia, mas nao vale a pena utilizar por custo
@@ -205,4 +205,4 @@ A ideia é ajudar o arquiteto se comunicar por diferentes pontos de vista
 
 - Para avaliar a necessidade de ter ou quantidade de documentacao, pode ser avaliar o risco.
 
-Quao mais complexo o sistema e arriscado de termos problemas (inclusive pela falta de documentacao), maior a chance
+Quao mais complexo o sistema e arriscado de termos problemas (inclusive pela falta de documentacao), maior a chance de precisar de mais documentacao

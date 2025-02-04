@@ -25,7 +25,7 @@ Software que roda em:
     - Afeta Curso
     - Que estategia utilizar?
     - Estar disponivel em momento de stress
-    - Pode se por exemplo selecionar funcionalidades para estar disponivel todo o tempo (alinhando trade-offs)
+    - Podes se por exemplo selecionar funcionalidades para estar disponivel todo o tempo (alinhando trade-offs)
 - Segurança
     - Pode ser: Rede, operacional, compartilhamento de informacao, Autent/Autorizacao de pessoas, dados
     - Processos, pessoas e tecnologia fazem parte da governaca para manter a segurança

@@ -20,7 +20,7 @@ Cria camadas separadas para a aplicação.
 
 Podemos definir a seguraca/exposicao de camada de forma diferente e restrigir que camada pode acessar outra. O mais comum seria apreseantacao so acessar applicacao e aplicacao acessar data (Mas pode acontecer excessoes)
 
-# Multi-tentant
+# Multi-tenant
 
 Tenant é como se fosse um inquilino. Como se cada inquilino fosse um empresa que quer usar o sistema de forma separada. Em que nao é desejado fazer um deploy para cada tenant.
 
@@ -123,7 +123,7 @@ Significa que o Cloud Provider vai provisionar e deixar tudo pronto e ele cobrar
 
 No caminho mais comum, em servico com camadas, uma request de post, salvaria no banco e retornaria o corpo. Sendo assim requisicao na pratica está fazendo mais do que apenas salvar, está tambem consultando.
 
-Usando o padrao CQRS, a tente separa o que é leitura do que é escrita
+Usando o padrao CQRS, a gente tende a separar o que é leitura do que é escrita
 
 ![alt text](image-11.png)
 
@@ -138,7 +138,7 @@ Então, por exemplo, se eu for querer gerar um crediário, eu vou gerar, ele vai
 
 Tenho diversas vantagens. Uma, eu consigo retornar os dados da forma mais fácil para o usuário, eu consigo ter views materializadas para retornar tudo da forma mais fácil, consigo ter mais performance para trabalhar dessa forma inclusive e eu consigo deixar a parte com responsabilidade de modelo de domínio somente em uma parte da aplicação. , Uma opção tambem é a seguinte: você pode criar um banco de dados de escrita e um banco de dados de leitura. Olha só que interessante. O meu banco de dados de escrita vai recebendo todas as gravações. O banco de dados de escrita sincroniza no banco de dados de leitura e a minha leitura acontece totalmente separada da minha escrita. Isso não é obrigatoriedade do CQRS, mas você pode fazer isso. 
 
-Pode ser tambem por exemplo, gravar em uma SQL e fazer a minha a em um Cassandra, etc.
+Pode ser tambem por exemplo, gravar em uma SQL e fazer a minha leitura em um Cassandra, etc.
 
 # Caching
 
@@ -159,15 +159,18 @@ O dado do cache pode ficar ultrapassado
     - Utilizado em sites de muito acesso
     - Em locais que vc sabe o horario que alguma atualizacao em bacth roda
 - Least Recently Used (LRU)
+    - Pensando em evitar que a memoria do cache encha
     - Gravando A, B e C na ordem
     - Ao gravar D e ser necessario mais memoria, é descardado o A por ser o menos recente
 - Most Recently Used (MRU)
     - Geralmente so se tem uma versao desse cache e vc apaga ele(ele sendo o mais recente)
+    - FAz sentido quando preciso subir uma versao nova de video por exemplo e preciso apagar
 - Least Frequently Used (LFU)
+    - Pensando em evitar que a memoria do cache encha
     - Apaga o menos utilizado
 - TTL-based invalidation
 - Write-through invalidation
-    - Menos comum
+    - Sistemas(ou funcionalidades) que tem muita leitura e pouca escrita
     - Sempre quando a alteracao no disco o cache é atualizao em conjunto
     - Funciona bem quando nao se tem alto indice de escrita
 - Write-back invalidation
