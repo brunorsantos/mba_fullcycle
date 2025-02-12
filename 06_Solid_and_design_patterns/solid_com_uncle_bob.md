@@ -137,3 +137,39 @@ The **O**pen/Closed Principle
 The **L**iskov Substitution Principle  
 The **I**nterface Segregation Principle  
 The **D**ependency Inversion Principle  
+
+
+## The Single Responsibility Principle 
+
+- Classe ou modulo deve ter uma e unicamente uma razao para mudar
+
+Não é que o modulo deve ter uma unica responsabilidade!!
+
+- Um ator que é a origem dessa mudanca
+
+![alt text](image-7.png)
+
+Quantas razoes Employee tem para mudar?
+
+A classe nao segue o principio do Single Responsability, pois cada metodo tem um ator que responsavel por mudancas.
+
+Ex: 
+- calculate pay, é algo relacionado ao setor finananceiro, o que o ator representante seria o CFO (Chief financial officer) que é quem as pessoas se reportam. Entao é quem seria o ator resposavel por essa mudancas
+- printReport é usado pela autidatores ou RH para ver dados pagamentos que se reportam COO(Chief operations officer)
+- save quem pediria por mudancas seria os DBAs que se reportariam para o CTO
+
+
+Olhando por exemplo um problema que pode ocorrer, quem desenvolve o printReport, pode querer reaproveitar metodos que arredondariam numeros, em que para printar melhor o COO pode pedir uma mudanca para imprimir melhor algo... Isso afetaria o pagamento por arredondamento
+
+### Formas de resolver
+
+Criar uma facade, que Employee vai ter os metodos, porem ele nao implementa, ele chama outras classes de servico que tem a regra nela
+
+![
+](image-8.png)
+
+Ou entao dividir rensposabilidades
+
+![alt text](image-9.png)
+
+EmployeeGateway e Employee Report Generator usam Employee para fazem suas acoes.
