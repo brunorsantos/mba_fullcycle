@@ -173,3 +173,77 @@ Ou entao dividir rensposabilidades
 ![alt text](image-9.png)
 
 EmployeeGateway e Employee Report Generator usam Employee para fazem suas acoes.
+
+
+## Open-closed principle
+
+Um artefato de software deve ser aberto para extensao mas fechado para modificaçao
+
+- Voce deve ser capaz de mudar o que o modulo faz(extensao, fazer mais coisas), porem sem mudar o modulo
+
+Como fazer isso? 
+ - Como dependency inversion
+ - Separando high level code e low level detais. Fazendo que dependencia no codigo fonte dos low level esteja invertida para apontar para abstracoes, e o high level tenha codigo fonte que aponte para abstracoes e 
+
+É bem dificil cumprir isso... Sendo assim da para limitar a quantidade de modulos abertos a modificacao, para caso perto da main(entrypoint da aplicacao).
+
+## Liskov substituition principle
+
+![alt text](image-10.png)
+
+Tendo um usuario, um tipo e um subtipo. No contexto do usuario esse subtipo pode ser substituido pelo tipo a qualquer momento.
+
+A imagem é uma violacao do principio
+
+Considerando que square é um retangulo, nesse exemplo square herdara os metodos que trocam altura e largura separadamente, o que nao faz sentido pra ele... Uma solucao seria sobrescrever o metodo, porem ao fazer isso o usuario deverá saber e ter um "if" para saber qual tipo ele esta usando antes de fazer uma acao...
+
+"representative rule" - Os representantes das coisas nao compartilham as relacoes das coisas que eles representam... Nesse caso a classe que representa um square, nao é exatamente um square
+
+- Quando vc cria uma subclasse que faz mais que a clase base, vc está quebrando esse principio
+- Quando a subclasse faz algo que a classe usuaria nao espera
+
+Ex: EmptyList no java que implementa List, quando o user utiliza o metodo add, estoura uma exception. 
+
+## Interface segregation principle
+
+Nao dependa de coisas que vc nao precise
+
+- Uma classe nao é obrigada a implementar uma interface que ela nao utilizará
+
+- Não implementar uma interface a nao ser que voce va utilizar todos os metodos que ela contem, se nao for o caso, crie uma nova interface.
+
+![alt text](image-11.png)
+
+Com esse design acima, na xerox cada modulo (feeder, inverter de papel, grampeador, etc) tinha que ter mudanca quando havia uma mudanca em job.
+
+![alt text](image-12.png)
+
+Para resolver, foram criadas diferentes interfaces que elas dependiam do job fazendo cada modulo herdar e ter que implementar apenas as coisas que ele precisa
+
+## Dependency inversion principle
+
+"Dependa da abstatracao"
+
+- High level policy nao deve depender do detalhe
+- Detalhe deve depender do high level policy na direcao da abstracao
+
+Todos os principios usam esse como low level anotation
+
+![alt text](image-13.png)
+
+Nessa imagem, tudo que App precisa fazer com as shapes, ele consegue fazer utilizando a interface. Isso obedece o open-closed principle, em que a classes de shapes estao abertas para extensao (adicao de novas features, sem causar mudancas), inclusive incluir novas shapes. Alem disso o dependency principle tambem esta sendo seguindo. 
+
+Porem a linha vermelha mostra um problema, em que existe uma dependencia de codigo fonte em que ao termos um shape novo, precisamos que App saiba que tipo é esse para criar a nova instancia (new() keyword). Sendo assim a gente precisa melhorar como está funcionando open-closed principle entre essa camada de aPP e o resto, deixando criar coisas em low level sem afetar o high(App).
+
+![alt text](image-14.png)
+
+Isso é possivel utilizando o design pattern abstract factory. Em que existe a linha chamada arquicture boundary, em que quero manter o open-closed principle. Colocando essa classe abstrata(seguindo o principio do dependency inversioon, pois low level e high level dependem da abstracao), criando as formas que queremos. Nesse exemplo cada metodo cria a forma especifica desejada porem todos eles retornam uma interface shape. Sendo assim isolamos as duas linhas...
+
+Porem ainda temos um problema... Se adicionamos um nova shape, vamos ter que adicionar uma nova funcao na factory
+
+![alt text](image-15.png)
+
+A solucao seria ter um metodo unico na factory, passando um paramentro que identifica qual a shape que o App quer usar.
+Para isso podemos criar uma execao que viola static type safety, que seria pasar via string qual o shape a ser utilizado
+
+![alt text](image-16.png)
