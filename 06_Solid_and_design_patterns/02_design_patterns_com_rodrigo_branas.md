@@ -23,7 +23,7 @@ Padroes do GOF sao do tipo:
 
 # Criando o contexto
 
-[Code](<06_Solid_and_design_patterns/02_design_patterns_com_rodrigo_branas_source/v0_contexto_projeto>)
+[Code](<02_design_patterns_com_rodrigo_branas_source/v0_contexto_projeto>)
 
 
 Aplicacao de geracao de notas fiscais.
