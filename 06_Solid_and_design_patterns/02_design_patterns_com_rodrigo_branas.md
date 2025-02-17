@@ -20,3 +20,39 @@ Padroes do GOF sao do tipo:
 - Criacao
 - Estrutura
 - Comportamento
+
+# Criando o contexto
+
+[Code](<06_Solid_and_design_patterns/02_design_patterns_com_rodrigo_branas_source/v0_contexto_projeto>)
+
+
+Aplicacao de geracao de notas fiscais.
+
+Comecando pelos testes, temos um teste `Deve gerar as notas fiscais` que chama um use case que executa essa acao
+
+```ts
+import GenerateInvoices from "../src/GenerateInvoices";
+
+test("Deve gerar as notas fiscais", async function () {
+    const generateInvoices = new GenerateInvoices();
+    const output = await generateInvoices.execute();
+    console.log(output);
+});
+```
+
+```ts
+import pgp from "pg-promise";
+
+export default class GenerateInvoices {
+
+    async execute () {
+        const connection = pgp()("postgres://postgres:123456@localhost:5432/app");
+        const contracts = await connection.query("select * from branas.contract", []);
+        console.log(contracts);
+        return [];
+    }
+
+}
+```
+
+
