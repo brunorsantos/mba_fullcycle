@@ -187,3 +187,87 @@ O que muda por motivo diferente:
 - Obtencao de dados (Como eu faco o SQL)
 - Tipo de regime (Se ele muda mudo nessa clase, tem um tipo novo, etc, muda essa classe)
 - Forma de pagamento/apuracao (Logica para falar como cada tipo se comporta)
+
+# Repository
+
+Realizar a persistência de aggregates (clusters de objetos de domínio como entities e value objects), separando essa responsabilidade da aplicação
+
+Vamos separar a parte de dados da aplicacao, de forma com que eu consiga ate trocar ela se necessario. 
+- Dando atenca que nao é um padrao que persiste qualquer coisa e sim agreggates (pensando em dominio)
+
+Vamos entao criar o repositório ja com interface `ContractRepository`
+
+```ts
+export default interface ContractRepository {
+	list (): Promise<any>;
+}
+```
+
+Com um possivel implementacao chamada `ContractDatabaseRepository` que é uma versao desse repositório para obter dados do banco.
+
+- Que por agora pode ate ficar com a conexao de banco, por falta de um lugar melhor
+- REspositorio esta falando de aggretates, sendo assim, podemos pensar que no nosso dominio nao faz sendito desassociar contrato de payment, por isso podemos manter em um unico repositorio as duas coisas. (O cluster é formado de 2 entidades)
+
+```ts
+import ContractRepository from "./ContractRepository";
+import pgp from "pg-promise";
+
+export default class ContractDatabaseRepository implements ContractRepository {
+
+    async list(): Promise<any> {
+        const connection = pgp()("postgres://postgres:123456@localhost:5432/app");
+        const contracts = await connection.query("select * from branas.contract", []);
+        for (const contract of contracts) {
+            contract.payments = await connection.query(
+                "select * from branas.payment where id_contract = $1", 
+                [contract.id_contract]
+            );
+        }
+        return contracts;
+    }
+}
+```
+
+Tirando tanto a parte de criar conxecao e obter dados do bando do use case.
+
+
+```ts
+    async execute (input: Input): Promise<Output[]> {
+        const output: Output[] = [];
+        const contractRepository = new ContractDatabaseRepository()
+        const contracts = await contractRepository.list()
+        for (const contract of contracts) {
+            if (input.type === "cash") {
+                for (const payment of contract.payments) {
+                    if (
+                        payment.date.getMonth() + 1 !== input.month || 
+                        payment.date.getFullYear() !== input.year
+                    ) continue;
+                    
+                    output.push({ 
+                        date: moment(payment.date).format("YYYY-MM-DD"), 
+                        amount: parseFloat(payment.amount) 
+                    });
+                }
+            }
+            
+            if (input.type === "accrual") {
+                let period = 0;
+                while (period <= contract.periods) {
+                    const date = moment(contract.date).add(period++, "months").toDate();
+                    if (date.getMonth() + 1 !== input.month || date.getFullYear() !== input.year) continue;
+                    const amount = parseFloat(contract.amount) / contract.periods;
+                    output.push({ date: moment(date).format("YYYY-MM-DD"), amount });
+                }
+            }
+        }
+    
+        return output;
+    }
+```
+
+Em que criamos um objeto de `ContractDatabaseRepository` no use case.
+
+Fizemos algumas decisoes de design, distribuindo responsabilidades. Isso foi permitido pela arquitetura (Escolher paradigma de orientacao objeto)
+
+Fica o problema que estamos usando uma interface sem todas as vantagens dela. Estamos por exemplo deixando o teste acoplado com o banco de dados. Fazendo o teste ter um controle dessa dependencia `ContractRepository`.
