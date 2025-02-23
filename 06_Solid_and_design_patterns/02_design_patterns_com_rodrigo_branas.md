@@ -190,6 +190,8 @@ O que muda por motivo diferente:
 
 # Repository
 
+[Code](<02_design_patterns_com_rodrigo_branas_source/v2_repository>)
+
 Realizar a persistência de aggregates (clusters de objetos de domínio como entities e value objects), separando essa responsabilidade da aplicação
 
 Vamos separar a parte de dados da aplicacao, de forma com que eu consiga ate trocar ela se necessario. 
@@ -271,3 +273,65 @@ Em que criamos um objeto de `ContractDatabaseRepository` no use case.
 Fizemos algumas decisoes de design, distribuindo responsabilidades. Isso foi permitido pela arquitetura (Escolher paradigma de orientacao objeto)
 
 Fica o problema que estamos usando uma interface sem todas as vantagens dela. Estamos por exemplo deixando o teste acoplado com o banco de dados. Fazendo o teste ter um controle dessa dependencia `ContractRepository`.
+
+# Principio DIP (Dependency inversion principle)
+
+[Code](<02_design_patterns_com_rodrigo_branas_source/v3_dip>)
+
+> Componentes de alto nível não devem depender de componentes de baixo nível, eles devem depender de abstrações
+
+Sendo assim o alto nivel (use case nao pode depdender do banco de dados), assim precisamos tirar o New em `ContractDatabaseRepository` do use case.
+
+Sendo assim vamos injetar a dependencia usando um construtor que espera a interface `ContractDatabaseRepository`
+
+```ts
+export default class GenerateInvoices {
+
+    constructor (
+		readonly contractRepository: ContractRepository
+	) {
+	}
+
+    async execute (input: Input): Promise<Output[]> {
+        const output: Output[] = [];
+        const contracts = await this.contractRepository.list()
+        for (const contract of contracts) {
+           ....     
+```
+
+Assim vamos poder usar coisas como `generateInvoices = new GenerateInvoices(contractRepository);`
+
+Me dando a possibilidade de desacoplar meu teste do banco de dados, dando uma implementacao falsa do `list()`, mockando ele.
+
+Podemos usar um `beforeEach` por exemplo para isto
+
+```ts
+beforeEach(() => {
+	const contractRepository: ContractRepository = {
+		async list (): Promise<any> {
+			return [
+				{
+					idContract: "",
+					description: "",
+					periods: 12,
+					amount: "6000",
+					date: new Date("2022-01-01T10:00:00"),
+					payments: [
+						{
+							idPayment: "",
+							idContract: "",
+							amount: 6000,
+							date: new Date("2022-01-05T10:00:00")
+						}
+					]
+				}
+			]
+		}
+	}
+
+	generateInvoices = new GenerateInvoices(contractRepository);
+});
+```
+Fazendo cada teste usar o `generateInvoices` criado com o banco falso. Melhoramos assim o padrao repository.
+
+Temos um problema ainda, estamos criando um conexao fixa dentro do repository
