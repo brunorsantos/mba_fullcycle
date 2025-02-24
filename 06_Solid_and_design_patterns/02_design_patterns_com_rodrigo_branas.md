@@ -335,3 +335,234 @@ beforeEach(() => {
 Fazendo cada teste usar o `generateInvoices` criado com o banco falso. Melhoramos assim o padrao repository.
 
 Temos um problema ainda, estamos criando um conexao fixa dentro do repository
+
+# Adapter
+
+[Code](<02_design_patterns_com_rodrigo_branas_source/v4_adapter>)
+
+> Converte a interface de uma classe em outra esperada pelo cliente, permitindo que classes incompatíveis trabalhem juntas
+
+Podemos criar uma abstracao chamada `DatabaseConnection` que permite que a gente faca um query e feche uma conexao. Que basicamente é um contrato.
+
+```ts
+export default interface DatabaseConnection {
+	query (statement: string, params: any): Promise<any>;
+	close (): Promise<void>;
+}
+```
+
+![alt text](image-18.png)
+
+No nosso caso o cliente é nosso sistema que vai conhecer apenas DatabaseConnection
+
+Sendo assim, vamos criar um PgPromisseAdapter para a Connection
+
+```ts
+import DatabaseConnection from "./DatabaseConnection";
+import pgp from "pg-promise";
+
+export default class PgPromiseAdapter implements DatabaseConnection {
+	connection: any;
+
+	constructor () {
+		this.connection = pgp()("postgres://postgres:123456@localhost:5432/app");
+	}
+
+	query(statement: string, params: any): Promise<any> {
+		return this.connection.query(statement, params);
+	}
+
+	close(): Promise<void> {
+		return this.connection.$pool.end();
+	}
+
+}
+```
+
+Desta forma agora podemos de novo usando inversao de dependencia injetando no repository o databaseConnection, usando 
+
+```ts
+	constructor (readonly connection: DatabaseConnection) {
+	}
+```
+
+e usando o `this.connection.query`.
+
+Isso vai permitir mais controle como no teste. Em que agora podemos passar a connection que a gente quer ao criar o repository
+
+
+```ts
+let connection: DatabaseConnection;
+let contractRepository: ContractRepository;
+
+beforeEach(() => {
+	connection = new PgPromiseAdapter();
+	contractRepository = new ContractDatabaseRepository(connection);
+	generateInvoices = new GenerateInvoices(contractRepository);
+});
+```
+
+Da melhorar ainda mais o padrao repository, criando o aggreate (objetos de dominios) e fazendo ele retornar esse tipo(ao inves de Any).
+Criamos entao `Contract` e `Payment`
+
+```ts
+import Invoice from "./Invoice";
+import InvoiceGenerationFactory from "./InvoiceGenerationFactory";
+import InvoiceGenerationStrategy from "./InvoiceGenerationStrategy";
+import Payment from "./Payment";
+import moment from "moment";
+
+export default class Contract {
+	private payments: Payment[];
+
+	constructor (
+		readonly idContract: string,
+		readonly description: string,
+		readonly amount: number,
+		readonly periods: number,
+		readonly date: Date
+	) {
+		this.payments = [];
+	}
+}
+```
+
+```ts
+export default class Payment {
+
+	constructor (
+		readonly idPayment: string,
+		readonly date: Date,
+		readonly amount: number
+	) {
+	}
+}
+```
+
+Agora sim está mais proximo de um repositorio (ainda falta colocar logica nas entidades), como `addPayment` e `getPayments`
+
+Fazendo o repositorio (interface e implementacao) retornar esses objetos corretos
+
+```ts
+import Contract from "./Contract";
+
+export default interface ContractRepository {
+	list (): Promise<Contract[]>;
+}
+```
+
+```ts
+import ContractRepository from "./ContractRepository";
+import pgp from "pg-promise";
+
+export default class ContractDatabaseRepository implements ContractRepository {
+
+	constructor (readonly connection: DatabaseConnection) {
+	}
+
+	async list(): Promise<Contract[]> {
+		const contracts: Contract[] = [];
+		const contractsData = await this.connection.query("select * from branas.contract", []);
+		for (const contractData of contractsData) {
+			const contract = new Contract(contractData.id_contract, contractData.description, parseFloat(contractData.amount), contractData.periods, contractData.date);
+			const paymentsData = await this.connection.query("select * from branas.payment where id_contract = $1", [contract.idContract]);
+			for (const paymentData of paymentsData) {
+				contract.addPayment(new Payment(paymentData.id_payment, paymentData.date, parseFloat(paymentData.amount)));
+			}
+			contracts.push(contract);
+		}
+		return contracts;
+	}
+}
+```
+
+Podemos ate tirar o parseFloat to usecase.
+
+Melhorando ainda, pensando nesse trecho do use case:
+
+```ts
+        for (const contract of contracts) {
+            if (input.type === "cash") {
+                for (const payment of contract.getPayments()) {
+                    if (
+                        payment.date.getMonth() + 1 !== input.month || 
+                        payment.date.getFullYear() !== input.year
+                    ) continue;
+                    
+                    output.push({ 
+                        date: moment(payment.date).format("YYYY-MM-DD"), 
+                        amount: payment.amount 
+                    });
+                }
+            }
+            
+            if (input.type === "accrual") {
+                let period = 0;
+                while (period <= contract.periods) {
+                    const date = moment(contract.date).add(period++, "months").toDate();
+                    if (date.getMonth() + 1 !== input.month || date.getFullYear() !== input.year) continue;
+                    const amount = parseFloat(contract.amount) / contract.periods;
+                    output.push({ date: moment(date).format("YYYY-MM-DD"), amount });
+                }
+            }
+        }
+```
+
+Pensando bem, ele esta pegando um contrato e toma decisa de qual invoice ele vai gerar... Sendo assim podemos transferir isso pra dentro do da entidade de contrato com um metodo `GenerateInvoice`. Percebemos assim que surge uma entidade invoice.
+
+```ts
+export default class Invoice {
+
+	constructor (readonly date: Date, readonly amount: number) {
+	}
+}
+```
+
+Para o generate invoice (metodo de contrato) precisamos orientar qual mes e ano (vindo do input) e retorna os invoices criados a partir de um contract.
+
+
+
+```ts
+	generateInvoices(month: number, year: number, type: string) {
+		const invoices: Invoice[] = [];
+		if (type === "cash") {
+			for (const payment of this.getPayments()) {
+				if (payment.date.getMonth() + 1 !== month || payment.date.getFullYear() !== year) continue;
+				invoices.push(new Invoice(payment.date, payment.amount));
+			}
+		}
+	
+		if (type === "accrual") {
+			let period = 0;
+			while (period <= this.periods) {
+				const date = moment(this.date).add(period++, "months").toDate();
+				if (date.getMonth() + 1 !== month || date.getFullYear() !== year) continue;
+				const amount = this.amount / this.periods;
+				invoices.push(new Invoice(date, amount));
+			}
+		}
+		return invoices;
+	}
+```
+
+Sem a gente dar conta, criamos a possibilidade de teste um teste de contratos (agora sim é um teste de unidade). Assim criamos um `Contract.test.ts`
+
+```ts
+import Contract from "../src/domain/Contract";
+import Payment from "../src/domain/Payment";
+// unit
+test("Deve calcular o saldo do contrato", function () {
+	const contract = new Contract("", "", 6000, 12, new Date("2022-01-01T10:00:00"));
+	contract.addPayment(new Payment("", new Date("2022-01-01T10:00:00"), 2000));
+	expect(contract.getBalance()).toBe(4000);
+});
+
+test("Deve gerar faturas de um contrato", function () {
+	const contract = new Contract("", "", 6000, 12, new Date("2022-01-01T10:00:00"));
+	const invoices = contract.generateInvoices(1, 2022, "accrual");
+	expect(invoices.at(0)?.date).toEqual(new Date("2022-01-01T13:00:00.000Z"));
+	expect(invoices.at(0)?.amount).toBe(500);
+});
+```
+
+
