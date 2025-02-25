@@ -566,3 +566,142 @@ test("Deve gerar faturas de um contrato", function () {
 ```
 
 
+# Stategy
+
+> Criar comportamento intercambiável
+
+![alt text](image-19.png)
+
+Resolve o principio do open-closed-principle do solid
+
+> Fechado para modificação e aberto para extensão
+> Crie pontos de extensão, evitando mexer no que já está funcionando e evitando fragilizar o código
+
+Olhando para este codigo aqui nao está legal, considerando que está bem sensivel a mudanca caso algum type novo seja criado
+
+```ts
+	generateInvoices(month: number, year: number, type: string) {
+		const invoices: Invoice[] = [];
+		if (type === "cash") {
+			for (const payment of this.getPayments()) {
+				if (payment.date.getMonth() + 1 !== month || payment.date.getFullYear() !== year) continue;
+				invoices.push(new Invoice(payment.date, payment.amount));
+			}
+		}
+	
+		if (type === "accrual") {
+			let period = 0;
+			while (period <= this.periods) {
+				const date = moment(this.date).add(period++, "months").toDate();
+				if (date.getMonth() + 1 !== month || date.getFullYear() !== year) continue;
+				const amount = this.amount / this.periods;
+				invoices.push(new Invoice(date, amount));
+			}
+		}
+		return invoices;
+	}
+```
+
+Vamos usar o padrao stategy para resolver isso
+
+> Strategy is a behavioral design pattern that lets you define a family of algorithms, put each of them into a separate class, and make their objects interchangeable.
+
+O repository e o adapter chegam a ser strategies seguindo essa logica
+
+Sendo assim, podemos criar um interface `InvoiceGenationStrategy` que o metodo generate espera o ano e mes necessarios para gerar o invoice
+
+```ts
+import Contract from "./Contract";
+import Invoice from "./Invoice";
+
+export default interface InvoiceGenerationStrategy {
+	generate (contract: Contract, month: number, year: number): Invoice[];
+}
+```
+
+E ter as duas implementacoes que cumpririam o papel do `if` cada uma com sua logica dependendo da estrategia
+
+`CashBasisStrategy`
+
+```ts
+import Contract from "./Contract";
+import Invoice from "./Invoice";
+import InvoiceGenerationStrategy from "./InvoiceGenerationStrategy";
+
+export default class CashBasisStrategy implements InvoiceGenerationStrategy {
+
+	generate(contract: Contract, month: number, year: number): Invoice[] {
+		const invoices: Invoice[] = [];
+		for (const payment of contract.getPayments()) {
+			if (payment.date.getMonth() + 1 !== month || payment.date.getFullYear() !== year) continue;
+			invoices.push(new Invoice(payment.date, payment.amount));
+		}
+		return invoices;
+	}
+
+}
+```
+
+`AccrualBasisStrategy`
+
+```ts
+import Contract from "./Contract";
+import Invoice from "./Invoice";
+import InvoiceGenerationStrategy from "./InvoiceGenerationStrategy";
+import moment from "moment";
+
+export default class AccrualBasisStrategy implements InvoiceGenerationStrategy {
+
+	generate(contract: Contract, month: number, year: number): Invoice[] {
+		const invoices: Invoice[] = [];
+		let period = 0;
+		while (period <= contract.periods) {
+			const date = moment(contract.date).add(period++, "months").toDate();
+			if (date.getMonth() + 1 !== month || date.getFullYear() !== year) continue;
+			const amount = contract.amount/contract.periods;
+			invoices.push(new Invoice(date, amount));
+		}
+		return invoices;
+	}
+
+}
+```
+
+Um coisa necessaria será uma forma associar o type com a strategy, para isso vamos usar um outro padrao `Dynamic Factory`
+
+> Criar uma instância com base em uma string
+
+Em que via a string identificamos a strategy adequada.
+
+```ts
+import AccrualBasisStrategy from "./AccrualBasisStrategy";
+import CashBasisStrategy from "./CashBasisStrategy";
+
+export default class InvoiceGenerationFactory {
+
+	static create (type: string) {
+		if (type === "cash") {
+			return new CashBasisStrategy();
+		}
+		if (type === "accrual") {
+			return new AccrualBasisStrategy();
+		}
+		throw new Error("Invalid type");
+	}
+}
+```
+
+Considerando que vamos escolher essa selecao na geracao do invoice, fazemos o `generateInvoices` da classe do contrato identificar a estrategia
+
+```ts
+	generateInvoices (month: number, year: number, type: string) {
+		const invoiceGenerationStrategy = InvoiceGenerationFactory.create(type);
+		return invoiceGenerationStrategy.generate(this, month, year);
+	}
+```
+
+Assim deixamos tambem a classe contract com mais itens realmente relacionados a regra de negocio como um `getBalance`
+
+
+
+
