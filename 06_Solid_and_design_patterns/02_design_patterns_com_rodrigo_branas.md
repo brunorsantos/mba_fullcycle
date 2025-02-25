@@ -568,6 +568,8 @@ test("Deve gerar faturas de um contrato", function () {
 
 # Stategy
 
+[Code](<02_design_patterns_com_rodrigo_branas_source/v5_strategy>)
+
 > Criar comportamento intercambiável
 
 ![alt text](image-19.png)
@@ -702,6 +704,111 @@ Considerando que vamos escolher essa selecao na geracao do invoice, fazemos o `g
 
 Assim deixamos tambem a classe contract com mais itens realmente relacionados a regra de negocio como um `getBalance`
 
+# Presenter
+
+[Code](<02_design_patterns_com_rodrigo_branas_source/v5_presenter>)
 
 
+> Formatar e adequar um determinado conjunto de dados às necessidades do cliente
 
+Pensando na necessidade de o nosso use case retornar o output em csv tambem e nao apenas o atual json. A ideia inicial poderia ser algo do tipo: Colocar um formato opcional na classe input e antes do return colocar um if com a logica de colocar `;` entre cada retorno.
+
+Dessa forma estamos fazendo a uso case ter essa logica de saber como formatar a saida, o que nao é adequado.
+
+
+A ideia é entregar para o UseCase um tipo de presenter para ele só pedir para ele apresentar, sendo assim tempo um `Presenter`
+
+```ts
+import { Output } from "../usecase/GenerateInvoices";
+
+export default interface Presenter {
+	present (output: Output[]): any;
+}
+```
+
+Mais uma vez é uma interface, mostrando mais uma vez que vamos usar polimorfismo para resolver um problema de responsabilidade usando um padrao
+
+Entao temos 2 presenters.
+
+```ts
+import { Output } from "../../application/usecase/GenerateInvoices";
+import Presenter from "../../application/presenter/Presenter";
+
+export default class JsonPresenter implements Presenter {
+
+	present(output: Output[]): any {
+		return output;
+	}
+
+}
+```
+
+```ts
+import { Output } from "../../application/usecase/GenerateInvoices";
+import Presenter from "../../application/presenter/Presenter";
+import moment from "moment";
+
+export default class CsvPresenter implements Presenter {
+
+	present(output: Output[]): any {
+		const lines: any[] = [];
+		for (const data of output) {
+			const line: string[] = [];
+			line.push(moment(data.date).format("YYYY-MM-DD"));
+			line.push(`${data.amount}`);
+			lines.push(line.join(";"));
+		}
+		return lines.join("\n");
+	}
+}
+```
+
+Uma observacao importante, é que esse é o lugar para colocar as regras de formatacao de formato por exemplo (responsabilidade)
+
+No use case podemos injetar o presenter e ainda dizer que caso nao seja especificado, utilizar o `JsonPresenter`
+
+```ts
+export default class GenerateInvoices {
+
+    constructor (
+		readonly contractRepository: ContractRepository,
+        readonly presenter: Presenter = new JsonPresenter(),
+	) {
+	}
+	...
+}
+```
+
+Alem de mandar chamar o `present` do presenter
+
+
+```ts
+export default class GenerateInvoices {
+    
+	...
+    async execute(input: Input): Promise<Output[]> {
+        const output: Output[] = [];
+		...
+        return this.presenter.present(output);
+    }
+}
+```
+
+Assim podemos incluir um teste chamando o use case com um presenter diferente
+
+```ts
+test("Deve gerar as notas fiscais por regime de competência por csv", async function () {
+	const input = {
+		month: 1,
+		year: 2022,
+		type: "accrual",
+		format: "csv"
+	};
+	const presenter = new CsvPresenter();
+	const generateInvoices = new GenerateInvoices(contractRepository, presenter);
+	const output = await generateInvoices.execute(input);
+	expect(output).toBe("2022-01-01;500");
+});
+```
+
+Assim temos o pattern Presenter com resposabilidade de representacao e apresentacao
