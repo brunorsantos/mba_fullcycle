@@ -706,7 +706,7 @@ Assim deixamos tambem a classe contract com mais itens realmente relacionados a 
 
 # Presenter
 
-[Code](<02_design_patterns_com_rodrigo_branas_source/v5_presenter>)
+[Code](<02_design_patterns_com_rodrigo_branas_source/v6_presenter>)
 
 
 > Formatar e adequar um determinado conjunto de dados às necessidades do cliente
@@ -812,3 +812,101 @@ test("Deve gerar as notas fiscais por regime de competência por csv", async fun
 ```
 
 Assim temos o pattern Presenter com resposabilidade de representacao e apresentacao
+
+
+# Decorator
+
+[Code](<02_design_patterns_com_rodrigo_branas_source/v6_presenter>)
+
+
+> Permite acrescentar funcionalidades a um objeto existente (OCP)
+
+Uma funcionalidade interessante, seria incluir no fluxo uma auditoria mais isolada. Que para cada requisicao a ser feita no use case seja logada dados dessa request. Que poderia ser por exemplo ter um tabela de log com persistencia, etc
+
+Sendo assim considerando uma implementacao de uma API basica com seu teste
+
+
+`api.test.ts`
+
+```ts
+import axios from "axios";
+
+test("Deve gerar as faturas pela api", async function () {
+	const input = {
+		month: 1,
+		year: 2022,
+		type: "cash"
+	}
+	const response = await axios.post("http://localhost:3000/generate_invoices", input);
+	const output = response.data;
+	expect(output.at(0)?.date).toBe("2022-01-05T13:00:00.000Z");
+	expect(output.at(0)?.amount).toBe(6000);
+});
+```
+
+`api.ts`
+
+```ts
+import express from "express"
+import PgPromiseAdapter from "./PgPromiseAdapter";
+import JsonPresenter from "./JsonPresenter";
+const app = express();
+app.use(express.json());
+
+const connection = new PgPromiseAdapter();
+const contractRepository = new ContractDatabaseRepository(connection);
+const generateInvoices = new GenerateInvoices(contractRepository, new JsonPresenter());
+
+app.post("/generate_invoices", async function (req: any, res: any) {
+    console.log(req.headers);
+    const input = req.body;
+    const output = await generateInvoices.execute(input);
+    res.json(output);
+});
+
+app.listen(3000);
+```
+
+O padrao decorator, extente funcionalidade em atrapalhar o objeto existente.
+
+Para isso vamos criar uma interface padrao para todo use case. `UseCase`, fazendo o use case atual implementar ele
+
+```ts
+export default interface Usecase {
+	execute (input: any): Promise<any>;
+}
+```
+
+```ts
+export default class GenerateInvoices implements Usecase {
+```
+
+
+![alt text](image-20.png)
+
+Na pratica, crimamos um `LoogerDecorator` que tambem implementa o `UseCase`
+
+```ts
+import Usecase from "../usecase/Usecase";
+
+export default class LoggerDecorator implements Usecase {
+
+	constructor (readonly usecase: Usecase) {
+	}
+
+	execute(input: any): Promise<any> {
+		console.log(input.userAgent);
+		return this.usecase.execute(input);
+	}
+
+}
+```
+
+Com atencao que o decorator é um use case que recebe um use case. Que no fim ele só repassa o fluxo para ele em `return this.usecase.execute(input);`, porem agregando uma funcionalidade a mais, nesse caso `console.log(input.userAgent);`
+
+Para usar ele basta fazer o wrapper no chamador em `api.ts` com:
+
+```ts
+const generateInvoices = new LoggerDecorator(new GenerateInvoices(contractRepository, new JsonPresenter()));
+```
+
