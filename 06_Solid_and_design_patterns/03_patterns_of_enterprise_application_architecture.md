@@ -65,7 +65,7 @@ O que acontece no coração da sua aplicação. E toda vez que a gente está fal
 - Encapsula a Lógica de Negócios
     - O dominio faz isso
 - Regras de Negócio em primeiro lugar
-    - Nao se pensa em transacao enquanto modela o domnio, jodando a complexidade para esse modelo
+    - Nao se pensa em transacao enquanto modela o dominio, jogando a complexidade para esse modelo
 - Validações
     - Mantem o estado forte o tempo todo.
     - Ex: Total do pedido vai sempre bater o total dos itens, o modelo mantem esse coerencia
@@ -122,7 +122,7 @@ Dependendo pode se optar por comecar com table model para depois caso ter sucess
     - Ela vai ter uma inferface clara para a camada de apresentacao
 - Encapsula a lógica de negócios
     - Quando se usa service layers isso acontece, quando se usa domain model isso ja nao é verdade. Ela ja fica no modelo de domínio.
-    - Quando se estar com model model vc nao precisa de alguem que encapsula as regras
+    - Quando se esta com domain model vc nao precisa de alguem que encapsula as regras
     - Quando vc esta trabalhando com Service Layer, suas entidades tentem a ser mais anemicas, pois a regras nao estao lá
     - Suas ententidates tendem a ter apenas getters and setters
 - Orquestra a ordem das operações
@@ -351,7 +351,7 @@ Person, podemos ter o nosso domínio complexo. Eu posso ter diversas classes, di
 - Domínios complexos: Data Mapper
 - Não há verdade absoluta
 
-# Atomicidade
+# Atomicidade/Unit of work
 
 
 Em muitas situações você não vai apenas persistir um objeto, você vai persistir diversos objetos. Então, você vai ter que criar um cliente, um pedido, adicionar um item do pedido, você vai precisar baixar o estoque, você vai precisar fazer um monte de coisa numa única transação. E você vai começar a perceber que essa transação trabalha com diversos objetos. Agora o grande ponto é, como eu consigo garantir numa única transação que você vai ter essa consistência em todos esses dados, em todos esses objetos
@@ -393,3 +393,140 @@ Imagina que eu estou utilizando o Data Mapper e eu faço uma consulta dos dados 
 - Mantém o controle dos objetos que foram criados, modificados ou marcados para remoção para ser utilizado em conjunto com o UoW
 
 O JPA é um exemplo que usa Unit of Work em conjunto com identity map
+
+# Lazy loading
+
+Um objeto que não possui todos os dados que você talvez precise, mas sabe onde buscá-lo.
+
+![alt text](image-27.png)
+
+- Carrega os objetos somente quando necessário
+- No carregamento inicial ao invés de ter os dados reais, esses dados são substituídos por proxies (apenas representações do objeto real, sem dados)
+- Quando os dados relacionados são acessados o proxy carrega os dados do
+banco
+- Cuidado enorme com N+1
+    - Ao usar load lazy loading pode causar isso, pois ao acumular pedido a ser carregado o ORM pode querer fazer várias consultas
+
+# Repository
+
+Mediação entre a camada de domínio e a camada de dados usando uma interface para acessar os objetos de domínio.
+
+Comparando com data-mapper, que apenas faz o mapeamento entre uma entidade de mapeamento com um banco de dados e isso é totalmente independente do domínio da aplicação. O repository lida com entidades de dominio (agregados).
+
+Sendo assim, na camada de dominio deve ter uma interface que define os contratos de como obter os objetos de dominio. Importante saber que é a camada de dominio que define como os dados vao chegar ate ela.
+
+- A interface de dominio fica na cadamda de dominio
+    - A implementacao ja é outra historia
+        - Geralmente fica em outra camada
+        - Ao mesmo tempo que pode tambem ser um active record que tambem roda na camada de dominio
+
+
+- Mediação entre os objetos de domínio e o data mapper
+    - Interface recebendo objetos de dominio e implementacao usando data mapper mapeando uma outra entidade com banco de dados
+- Recebe objetos de domínio atendendo uma especificação
+    - A especificacao é exatamente a interface
+- Retorna objetos de domínio
+    - Sempre retorna sua entidade, seu agregado
+- Normalmente faz diferentes combinações de especificações gerando o SQL desejado para atender um critério
+- “Promove" o padrão “specification" (para criterio de busca, ex id, range de valor)
+
+## Exemplo de como usar specification em repository
+
+Interface de specification a ser utilizada com um atributo generico de um tipo, que recebe esse tipo para verificar
+
+```ts
+interface Specification<T> {
+    isSatisfiedBy(item: T): boolean;
+}
+```
+
+Ai gente pode ter um sepecification concreta que tem um metodo que espera um usuario como o tipo T chegando algo desejado
+
+```ts
+class UserEmailSpecification implements Specification<User> {
+    constructor(private email: string) {}
+
+    isSatisfiedBy(user: User): boolean {
+        return user.email === this.email;
+    }
+}
+```
+
+Sendo assim terei uma interface repositorio que fica na camada de dominio. Ele que define o contrato e retorna um objeto de dominio (arry de user)
+
+```ts
+interface UserRepository {
+    findBySpecification(specification: Specification<User>): User[];
+    // Other methods in the UserRepository interface...
+}
+```
+
+
+Eu poderia ter minha implementacao especificacao na camada de banco de dados, com busca efetiva. Buscando do banco, memoria, etc...
+
+```ts
+class SqlUserRepository implements UserRepository {
+    // Other implementation details...
+
+    findBySpecification(specification: Specification<User>): User[] {
+        const users: User[] = [];
+        for (const user of this.users) {
+            if (specification.isSatisfiedBy(user)) {
+                users.push(user);
+            }
+        }
+        return users;
+    }
+}
+```
+
+Esse padrao specification serve para dar mais flexibilidade, nao é necessario usar...
+
+Exemplo de utilizacao
+
+```ts
+// Exemplo de classe User
+class User {
+    constructor(public id: number, public name: string, public email: string) {}
+}
+
+// Exemplo de uso
+const userRepository: UserRepository = new SqlUserRepository(); // Instanciando o repositório
+
+const userSpecification: Specification<User> = new UserEmailSpecification("user@example.com");
+
+// Especificação de busca por email
+const users: User[] = userRepository.findBySpecification(userSpecification);
+
+console.log(users); // Exibindo os usuários encontrados
+```
+
+
+# consideracoes finais
+
+Gateways sao forma de acessos da porta pra fora (Table ou row gateways)
+
+Sobre as camadas:
+
+- Presentation
+    - Display Information
+    - CLI
+    - HTTP Requests
+- Domain
+    - Coração da aplicação
+    - Regras de negócio
+- Data Source
+    - Banco de dados
+    - Mensageria
+
+Temos a regra de ouro:
+
+- Domínio e Data Source nunca podem depender da apresentação
+
+
+Mas da pra acrescentar que considerando que repository é um padrao que a interface fica na camada de dominio e a implementacao na de banco (dependendo da implementacao em si), isso significa que a camada de data source vai depender da camada de dominio. Pois a camada de data source precisa implementar a interface definida no domínio. Isso significa que as classes concretas de repositório conhecem a camada de domínio, mas não o contrário.
+
+A camada de Domínio NÃO depende da Data Source, pois só conhece a interface do repositório, e não sua implementação específica. Isso mantém o domínio isolado e desacoplado de detalhes de persistência.
+
+A camada de Apresentação (Presentation) precisa conhecer tanto a camada de Domínio quanto a camada de Data Source, pois ela orquestra a aplicação e faz a ponte entre a interface do usuário e as regras de negócio.
+
