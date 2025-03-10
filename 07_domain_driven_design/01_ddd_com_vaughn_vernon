@@ -1,0 +1,47 @@
+# Definicao
+
+## O que é DDD
+
+- Forma de pensar sobre softare model design
+- Abordagem para resolver problemas complexos como software
+- Contextual, centrada em linguagem, ferramentas de modelagem estrategicas e taticas
+
+# Por que utilizar
+
+Comunicacao pode ficar muito complexa em organizacao grande(por exemplos com mais de 20 noveis de hirarquia do c level ate quem interage com sofware).
+Da mensagem do C level com funcao estrategica ate chegar no desenvedor, teve muito ruido ate isso
+
+# Strategic Design
+
+- Pensando um pintar em casa, o design estratecio se compara as pinceladas sao mais largas e amplas para pegarem a mmaio parte
+- Umas da pedras angulares do DDD é bounded context
+    - Lugar onde o modelo e todos os elementos do modelo tem relevancia
+    - Definificoes tomadas com cuidado e possivelmente diferentes desse contexto de outro termos de outro contexto
+    - termos "police" pode ter diferencas em outros contexts
+
+
+![alt text](image.png)
+
+O elementos (partes amerelas) refletem a linguagem ubiqua e tudo que esta associado a eles (dados, types, states, behavior, etc). Tudo isso focado em um aspecto do problema de negocio.
+
+![alt text](image-1.png)
+
+Aqui temos 3 bounded contexts que eles nao esta fortemente acoplados. Cada time de cada bounded context é foca em sua area e trabalha de forma autonoma
+
+![alt text](image-2.png)
+
+Problem space scope resolve coisas de mais de um bounded context, nao de toda empresa
+
+![alt text](image-3.png)
+
+Focando no problem space, e vendo os boundex contexts especificos, com 5 diferentes times com diferentes expertises  estao trabalhando juntos com uma equipe. 
+
+- Problema space level estamos pensando em domain
+
+![alt text](image-4.png)
+
+- Core domain - é o motivo de estar usando DDD para iniciar. Tende a ser complexo
+- Suport subdomain - NAo existia antes, é para ajudar o dominio, nao é tao complexo. Mas tem que desenvolver pois nao existe para comprar ou nao vale a pena
+- Generic subdomain - Basicamente areas que vc pode comprar ou baixar da internet. Nao queremos nos especializar
+
+![alt text](image-5.png)
