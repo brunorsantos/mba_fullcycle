@@ -36,7 +36,7 @@ Problem space scope resolve coisas de mais de um bounded context, nao de toda em
 
 Focando no problem space, e vendo os boundex contexts especificos, com 5 diferentes times com diferentes expertises  estao trabalhando juntos com uma equipe. 
 
-- Problema space level estamos pensando em domain
+No Problem space scope level estamos pensando em domain, abaixo em subdomains (Que inclui o bounded context e mais coisas)
 
 ![alt text](image-4.png)
 
@@ -45,3 +45,94 @@ Focando no problem space, e vendo os boundex contexts especificos, com 5 diferen
 - Generic subdomain - Basicamente areas que vc pode comprar ou baixar da internet. Nao queremos nos especializar
 
 ![alt text](image-5.png)
+
+![alt text](image-6.png)
+
+## Context mapping
+
+É parte do design estrategico. 
+
+Vao exitstir mais de um bounded context, eles vao precisar de trabalhar juntos de alguma forma
+
+![alt text](image-7.png)
+
+## Padrao de context mapping relationship
+
+### Partership
+
+![alt text](image-8.png)
+
+Precisa de muito alinhamento, muita reuniao. Vao precisar de trabalhar muito tempo juntos.... Por isso a linha grossa
+
+Sai caro trabalhar juntos
+
+### Shared kernel
+
+![alt text](image-9.png)
+
+- Compartilhar um model comum entre eles...
+- Ussam o model compartilhado como se fosse seu
+
+Underwrgin usa termos, frases, acoes relactionados a moeda e risco tambem
+
+Kernel significa pequena, é feito pra ser pequeno
+
+Nao é uma realacao muito amavel de se ter... Os 2 times precisam concordar que as definicoes tem que ser iguais
+
+### Costumer supplier
+
+![alt text](image-10.png)
+
+Um fornece para o outro que tem papel de consumidor
+
+Nesse exemplo risk nao sabe sobre o consumidor... Ele produz para qualquer consumidor, nao preocupa com quem.
+
+O downstream deve aceitar o que o upstream fornece
+
+### Conformist
+
+![alt text](image-11.png)
+
+Um modelo upstream complexo utilizando conformidade da linguagem ubiqua
+
+
+### Anti corruption layer
+
+![alt text](image-12.png)
+
+O oposto da relacao conformista em que temos um upstream traduzindo algo para um modelo com liguagem ubiqua
+
+### Open-host-service
+
+![alt text](image-13.png)
+
+Prove uma API que o downstream registra para receber evento
+
+### Publish language
+
+Usando geralmetne junto com open-host-service,\.
+
+Onde bounded-context pode publicar para o mundo algo que registra a linguagem publica (schemas)
+
+# Tectical Deign
+
+Fala de mais detalhes
+
+![alt text](image-14.png)
+
+Quais sao alguns dos componentes taticos?
+
+## Module
+
+![alt text](image-15.png)
+
+Esse exemplo pode ser o interior de um bounded contexto deployado dentro de um monolito... Ou entao cada coisa dentro poderia ser seu proprio context. a granularidade pode ser decidia pelo time
+
+## Aggregates, values, events
+
+![alt text](image-16.png)
+
+Aggregate é um tipo de entidade que fornece um escopo transacional para um transacao de banco de dados em torno desse conjunto de dados
+
+O azul é um comando que é recebido por uma entetidade Application. Que precisa configurado todos os dados (parte dele o value objeto Progress). Que gera um evento no passado Proposal submitted
+
