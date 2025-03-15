@@ -136,3 +136,8 @@ Aggregate é um tipo de entidade que fornece um escopo transacional para um tran
 
 O azul é um comando que é recebido por uma entetidade Application. Que precisa configurado todos os dados (parte dele o value objeto Progress). Que gera um evento no passado Proposal submitted
 
+
+# Architecture
+
+## Port adapters
+
