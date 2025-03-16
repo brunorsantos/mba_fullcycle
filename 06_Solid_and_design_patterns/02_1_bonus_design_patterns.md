@@ -614,3 +614,139 @@ async function main() {
 main();
 ```
 
+
+# Sepecification
+
+> O Specification é um padrão comportamental que encapsula regras de negócio em objetos reutilizáveis, permitindo combinar essas regras dinamicamente.
+
+> Em vez de misturar lógica de validação dentro de entidades ou repositórios, criamos objetos de especificação que podem ser reutilizados e combinados.
+
+## Quando Usar?
+
+- Quando queremos separar regras de negócio da lógica de aplicação.
+- Quando precisamos combinar regras de forma dinâmica (ex: múltiplos filtros para contratos).
+- Quando queremos evitar espalhar condições (if) pelo código.
+
+--- 
+
+### Exemplo
+
+Podemos imaginar uma regra que para gerar invoice precisamos validar se: 
+
+1 - O contrato tem pagamentos pendentes.
+2 - O contrato tem mais de 12 parcelas.
+3 - O contrato é recente (menos de um ano de existência).
+
+Elas poderiam estar por exemplo no use Case assim:
+
+```ts
+const contracts = await contractRepository.list();
+const validContracts = contracts.filter(contract => {
+    const hasPendingPayments = contract.getBalance() > 0;
+    const isLongTerm = contract.periods > 12;
+    const isRecent = moment().diff(contract.date, "months") < 12;
+
+    return hasPendingPayments && isLongTerm && isRecent;
+});
+```
+
+Podemos resolver com spefication.
+
+- Criando uma interface base
+
+```ts
+import Contract from "../domain/Contract";
+
+export default interface Specification {
+    isSatisfiedBy(contract: Contract): boolean;
+}
+```
+
+Com algumas especificacoes:
+
+- Tem pagamentos pendentes
+
+```ts
+import Contract from "../domain/Contract";
+
+export default interface Specification {
+    isSatisfiedBy(contract: Contract): boolean;
+}
+```
+
+- Contrato Longo (Mais de 12 Meses)
+
+```ts
+import Contract from "../domain/Contract";
+import Specification from "./Specification";
+
+export default class LongTermContractSpecification implements Specification {
+    isSatisfiedBy(contract: Contract): boolean {
+        return contract.periods > 12;
+    }
+}
+```
+
+- Contrato Recente (Menos de 1 Ano)
+
+```ts
+import Contract from "../domain/Contract";
+import Specification from "./Specification";
+import moment from "moment";
+
+export default class RecentContractSpecification implements Specification {
+    isSatisfiedBy(contract: Contract): boolean {
+        return moment().diff(contract.date, "months") < 12;
+    }
+}
+```
+
+Podemos criar uma especificação composta para combinar regras com AND, OR e NOT.
+
+```ts
+import Specification from "./Specification";
+import Contract from "../domain/Contract";
+
+export default class AndSpecification implements Specification {
+    constructor(private readonly specs: Specification[]) {}
+
+    isSatisfiedBy(contract: Contract): boolean {
+        return this.specs.every(spec => spec.isSatisfiedBy(contract));
+    }
+}
+```
+
+```ts
+vimport Specification from "./Specification";
+import Contract from "../domain/Contract";
+
+export default class OrSpecification implements Specification {
+    constructor(private readonly spec1: Specification, private readonly spec2: Specification) {}
+
+    isSatisfiedBy(contract: Contract): boolean {
+        return this.spec1.isSatisfiedBy(contract) || this.spec2.isSatisfiedBy(contract);
+    }
+}
+```
+
+### Aplicacao no usecase
+
+```ts
+import HasPendingPaymentsSpecification from "../specification/HasPendingPaymentsSpecification";
+import LongTermContractSpecification from "../specification/LongTermContractSpecification";
+import RecentContractSpecification from "../specification/RecentContractSpecification";
+import AndSpecification from "../specification/AndSpecification";
+
+const contracts = await contractRepository.list();
+
+// Criamos uma especificação combinada
+const contractSpec = new AndSpecification([
+    new HasPendingPaymentsSpecification(),
+    new LongTermContractSpecification(),
+    new RecentContractSpecification()
+]);
+
+// Filtramos os contratos que satisfazem todas as regras
+const validContracts = contracts.filter(contract => contractSpec.isSatisfiedBy(contract));
+```
+
