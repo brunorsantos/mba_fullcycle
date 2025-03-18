@@ -737,3 +737,227 @@ export class EventSection extends Entity {
 Nao devemos ter nas filhas relacao com os pais (Ex: `Section` para `Event`) usando id.
 
 Poderimoas ter uma relacao para filho apenas para 1, colocando diretamente o tipo da entidade Filha, sem usar lista. No comando poderiamos receber alguma informacao que é utilizada para criar o filho diretamente
+
+
+# Regras de negocio em agregados
+
+Lembrando muito de utilizar dominio rico, precisamos deixar que o agregado de `Event` tenha `Sections`
+
+Para isso vamos incluir uma logica de `addSection`
+
+```ts
+... 
+
+
+export type AddSectionCommand = {
+  name: string;
+  description?: string | null;
+  total_spots: number;
+  price: number;
+};
+
+export class Event extends AggregateRoot {
+...
+  addSection(command: AddSectionCommand) {
+    const section = EventSection.create(command);
+    this.sections.add(section);
+    this.total_spots += section.total_spots;
+  }
+...
+
+}
+```
+
+- Deixo explicito que esse metodo é um comando considerando que ele espera esse tipo novo como parametro
+- Utilizo o commando de create do section
+- Com o retorno do que é criado adiciono na lista de sections privado do evento
+- Incluo a regra de negocio de incrementar o total de spots do `event`
+
+
+Precisamos tambem ja adaptar `Section` (commando create ja existente) para criar a lista de spots
+
+```ts
+  static create(command: EventSectionCreateCommand) {
+    const section = new EventSection({
+      ...command,
+      description: command.description ?? null,
+      is_published: false,
+      total_spots_reserved: 0,
+    });
+
+    section.initSpots();
+    return section;
+  }
+
+  private initSpots() {
+    for (let i = 0; i < this.total_spots; i++) {
+      this.spots.add(EventSpot.create());
+    }
+  }
+```
+
+- Chama um metodo privado(para organizar melhor) que itera criando um spot para o total passado
+
+
+Uma coisa interessante que é possivel observar, é que o `Event` tem o Id do parceiro entre seus itens, e que a criacao de um evento tende a ser feita por um parceiro.
+
+Sendo assim podemos concluir no DDD que faz sentido que essa logica de criar um evento esteja no Partner. Vamos incluir em `partner.entity.ts`
+
+```ts
+export type InitEventCommand = {
+  name: string;
+  description?: string | null;
+  date: Date;
+};
+
+export class Partner extends AggregateRoot {
+
+...
+
+  initEvent(command: InitEventCommand) {
+    return Event.create({
+      ...command,
+      partner_id: this.id,
+    });
+  }
+}
+
+```
+
+Nesse formato vamos poder usar algo como:
+
+```ts
+    const event = Event.create({
+      name: 'Evento 1',
+      description: 'Descrição do evento 1',
+      date: new Date(),
+      partner_id: new PartnerId(),
+    });
+
+    event.addSection({
+      name: 'Sessão 1',
+      description: 'Descrição da sessão 1',
+      total_spots: 100,
+      price: 1000,
+    });
+```
+
+Ponto de atencao muito grande, é para nao criar metodos como `update` que nao demostram expressividade no dominio... deve ser criar alteracoes explicitas.
+
+Como `changeName` em `Partner`
+
+```ts
+
+export class Partner extends AggregateRoot {
+
+...
+
+  changeName(name: string) {
+    this.name = name;
+  }
+}
+```
+
+
+Alteracoes de Nome, description e data em `Event`
+
+```ts
+export class Event extends AggregateRoot {
+...
+  changeName(name: string) {
+    this.name = name;
+    this.addEvent(new EventChangedName(this.id, this.name));
+  }
+
+  changeDescription(description: string | null) {
+    this.description = description;
+    this.addEvent(new EventChangedDescription(this.id, this.description));
+  }
+
+  changeDate(date: Date) {
+    this.date = date;
+    this.addEvent(new EventChangedDate(this.id, this.date));
+  }
+}
+```
+
+- Alteracoes de nome description e price em section 
+
+- Alteracoes em spot de location e publicacao
+
+```ts
+export class EventSpot extends Entity {
+
+...
+
+  changeLocation(location: string) {
+    this.location = location;
+  }
+
+  publish() {
+    this.is_published = true;
+  }
+
+  unPublish() {
+    this.is_published = false;
+  }
+
+  markAsReserved() {
+    this.is_reserved = true;
+  }
+}
+
+```
+
+Por consequencia posso ter em `Section` e `Event` forma de publishAll de forma a sair fazendo a publicacao encadeda
+
+
+```ts
+export class EventSection extends Entity {
+  
+  ...
+
+  publishAll() {
+    this.publish();
+    this.spots.forEach((spot) => spot.publish());
+  }
+
+  publish() {
+    this.is_published = true;
+  }
+
+  unPublish() {
+    this.is_published = false;
+  }
+}
+```
+
+```ts
+
+export class Event extends AggregateRoot {
+
+  ...
+
+  publishAll() {
+    this.publish();
+    this._sections.forEach((section) => section.publishAll());
+    this.addEvent(
+      new EventPublishAll(
+        this.id,
+        this._sections.map((s) => s.id),
+      ),
+    );
+  }
+
+  publish() {
+    this.is_published = true;
+    this.addEvent(new EventPublish(this.id));
+  }
+
+  unPublish() {
+    this.is_published = false;
+    this.addEvent(new EventUnpublish(this.id));
+  }
+}
+
+```

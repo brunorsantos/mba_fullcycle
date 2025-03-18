@@ -109,6 +109,10 @@ Na hora de fazer a escrita nao passe nenhuma entidade a nao ser o agregado.
 
 Porem na consulta nao fique consultando apenas o `Spot` 
 
+![alt text](image-27.png)
+
+
+
 # Domain service
 
 ![alt text](image-25.png)
