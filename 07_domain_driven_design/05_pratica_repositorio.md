@@ -224,3 +224,35 @@ test('partner repository', async () => {
 ```
 
 - Quem vai ficar responsavel pelo controle transacional vai ser a camada de aplicacao.
+
+# Mais repositorios e mapeamentos complexos
+
+Observacoes importantes ao criar o restante dos repositorios
+
+## Costumer
+
+- Precisamos de criar por ser um agregate root
+- Basicamente com as mesmas questoes anteriores
+- Um schema dele na camada de repository chamado `CustomerSchema`
+- Tipo customizado para `CustomerIdSchemaType`
+- Tipo customizado para `CpfSchemaType`
+- Uma interface `ICustomerRepository` na camada de domain
+- Uma implementacao da interface `ICustomerRepository` na camada de repository com os metodos `add`, `findById`, `findAll` e `delete`
+
+## Event
+
+- Precisamos de criar o resposotorio em si por ser um agregate root
+    - Nao vamos criar o repositorio para Section e Spot
+- Um schema `EventSchema` na camada de repository 
+    - Usando especificacao de mickrorm criar no esquema relacao de 1 para muitos para `EventSection` e muitos para um para `Partner`
+- Um schema `EventSectionSchema` na camada de repository 
+- Um schema `EventSpotSchema` na camada de repository 
+
+..
+
+
+### Observacoes
+
+- Usando agregados costumamos fazer o carregamento de forma eager do banco de dados com os relacionamentos (seja um para muitos ou relacoes 1 para 1)
+
+- Usando agregados costumamos usar "cascade" na considerando insercoes, atualizacoes e remocoes do banco (assim no flush do unit of work) um add ja adiciona em todas as tabelas por exemplo
