@@ -1,3 +1,6 @@
+[Link](https://github.com/devfullcycle/mba-domain-driven-design/tree/main/apps/mba-ddd-venda-ingresso)
+
+
 # ORM
 
 A melhor forma de usar ORM com DDD é selecionado alguem que tenha Data mapper, tendem a funcionar melhor do que os que usar active record.
@@ -234,8 +237,8 @@ Observacoes importantes ao criar o restante dos repositorios
 - Precisamos de criar por ser um agregate root
 - Basicamente com as mesmas questoes anteriores
 - Um schema dele na camada de repository chamado `CustomerSchema`
-- Tipo customizado para `CustomerIdSchemaType`
-- Tipo customizado para `CpfSchemaType`
+- Tipo customizado para `CustomerIdSchemaType` ainda na camada de repository
+- Tipo customizado para `CpfSchemaType` ainda na camada de repository
 - Uma interface `ICustomerRepository` na camada de domain
 - Uma implementacao da interface `ICustomerRepository` na camada de repository com os metodos `add`, `findById`, `findAll` e `delete`
 
@@ -243,12 +246,50 @@ Observacoes importantes ao criar o restante dos repositorios
 
 - Precisamos de criar o resposotorio em si por ser um agregate root
     - Nao vamos criar o repositorio para Section e Spot
-- Um schema `EventSchema` na camada de repository 
-    - Usando especificacao de mickrorm criar no esquema relacao de 1 para muitos para `EventSection` e muitos para um para `Partner`
+- Um schema `EventSchema` na camada de repository
+    - Usando especificacao de mickrorm criar no esquema relacao de 1 para muitos para `EventSection`
+    - Usando especificacao de mickrorm criar  relacao muitos para um para `Partner`
+    - Usando tipo customizado `EventIdSchemaType` ainda na camada de repository
 - Um schema `EventSectionSchema` na camada de repository 
-- Um schema `EventSpotSchema` na camada de repository 
+    - Usando especificacao de mickrorm criar no esquema relacao de 1 para muitos para `EventSpot`
+    - Usando especificacao de mickrorm criar relacao muitos para um para `Event` (Lembrando que isso nao vai ser refletir na entidade de dominio pro nao ter necessidade)
+    - Usando tipo customizado `EventSectionIdSchemaType` ainda na camada de repository
+- Um schema `EventSpotSchema` na camada de repository
+    - Usando especificacao de mickrorm criar relacao muitos para um para `EventSchema` (Lembrando que isso nao vai ser refletir na entidade de dominio pro nao ter necessidade)
+    - Usando tipo customizado `EventSpotIdSchemaType` ainda na camada de repository
 
-..
+- Uma interface `IEventRepository` na camada de domain (Criar apenas para o o agregate-root)
+- Uma implementacao da interface `IEventRepository` na camada de repository com os metodos `add`, `findById`, `findAll` e `delete`
+
+```ts
+import { EntityManager } from '@mikro-orm/mysql';
+import { Event, EventId } from '../../../domain/entities/event.entity';
+import { IEventRepository } from '../../../domain/repositories/event-repository.interface';
+
+export class EventMysqlRepository implements IEventRepository {
+  constructor(private entityManager: EntityManager) {}
+
+  async add(entity: Event): Promise<void> {
+    this.entityManager.persist(entity);
+  }
+
+  async findById(id: string | EventId): Promise<Event> {
+    return this.entityManager.findOne(Event, {
+      id: typeof id === 'string' ? new EventId(id) : id,
+    });
+  }
+
+  async findAll(): Promise<Event[]> {
+    return this.entityManager.find(Event, {});
+  }
+
+  async delete(entity: Event): Promise<void> {
+    await this.entityManager.remove(entity);
+  }
+}
+
+```
+
 
 
 ### Observacoes
@@ -256,3 +297,63 @@ Observacoes importantes ao criar o restante dos repositorios
 - Usando agregados costumamos fazer o carregamento de forma eager do banco de dados com os relacionamentos (seja um para muitos ou relacoes 1 para 1)
 
 - Usando agregados costumamos usar "cascade" na considerando insercoes, atualizacoes e remocoes do banco (assim no flush do unit of work) um add ja adiciona em todas as tabelas por exemplo
+
+### Teste
+
+```ts
+import { MikroORM, MySqlDriver } from '@mikro-orm/mysql';
+import {
+  EventSchema,
+  EventSectionSchema,
+  EventSpotSchema,
+  PartnerSchema,
+} from '../../schemas';
+import { Event } from '../../../../domain/entities/event.entity';
+import { EventMysqlRepository } from '../event-mysql.repository';
+import { Partner } from '../../../../domain/entities/partner.entity';
+import { PartnerMysqlRepository } from '../partner-mysql.repository';
+
+test('Event repository', async () => {
+  const orm = await MikroORM.init<MySqlDriver>({
+    entities: [EventSchema, EventSectionSchema, EventSpotSchema, PartnerSchema],
+    dbName: 'events',
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: 'root',
+    type: 'mysql',
+    forceEntityConstructor: true,
+    debug: true,
+  });
+  await orm.schema.refreshDatabase();
+  const em = orm.em.fork();
+  const partnerRepo = new PartnerMysqlRepository(em);
+  const eventRepo = new EventMysqlRepository(em);
+
+  const partner = Partner.create({ name: 'Partner 1' });
+  await partnerRepo.add(partner);
+  const event = partner.initEvent({
+    name: 'Event 1',
+    date: new Date(),
+    description: 'Event 1 description',
+  });
+
+  event.addSection({
+    name: 'Section 1',
+    description: 'Section 1 description',
+    price: 100,
+    total_spots: 1000,
+  });
+
+  await eventRepo.add(event);
+  await em.flush();
+  await em.clear();
+
+  const eventFound = await eventRepo.findById(event.id);
+  console.log(eventFound);
+
+  await orm.close();
+});
+
+
+```
