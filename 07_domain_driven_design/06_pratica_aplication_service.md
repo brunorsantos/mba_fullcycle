@@ -46,3 +46,65 @@ export class CustomerService {
 - Para register, esperamo um input (DTO - camada apenas para transferencia de dados). Chamamos o comando de create de `Customer` e adicionamos utilizando o repositorio.
 
 Temos questao para resolver que é efetivar o salvamento no banco. Vamos utilizar adequadamente o unit of work para isso
+
+# Implementando abstracao do unit of work
+
+Queremos que camada de aplicacao controle o unit work(ou seja os application services), e vamos fazer uma forma que a gente nao dependa da tecnologia.
+
+Sendo assim criamos uma interfa na camada de aplicacao em `@core/common/application/unit-of-work.interface.ts`
+
+
+```ts
+import { AggregateRoot } from '../domain/aggregate-root';
+
+export interface IUnitOfWork {
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+```
+
+E implementamos ela na camada de infra em `@core/common/infra/unit-of-work.micro-orm.ts` com:
+
+```ts
+import { EntityManager } from '@mikro-orm/mysql';
+import { IUnitOfWork } from '../application/unit-of-work.interface';
+
+export class UnitOfWorkMikroOrm implements IUnitOfWork {
+  constructor(private em: EntityManager) {}
+
+  commit(): Promise<void> {
+    return this.em.flush();
+  }
+
+  async rollback(): Promise<void> {
+    this.em.clear();
+  }
+}
+```
+
+- Injetamos o EntityManager do mikro-orm
+
+Para utizar no aplication service mudamos para:
+
+```ts
+
+import { Customer } from '../domain/entities/customer.entity';
+import { ICustomerRepository } from '../domain/repositories/customer-repository.interface';
+
+export class CustomerService {
+    constructor(
+        private customerRepo: ICustomerRepository,
+        private uow IUnitOfWork) {}
+
+    list() {
+        return this.customerRepo.findAll();
+    }
+
+    register(input: { name: string; cpf: string }) {
+        const customer = Customer.create(input);
+        this.customerRepo.add(customer);
+        await this.uow.commit();
+        return customer;
+    }
+}
+```
