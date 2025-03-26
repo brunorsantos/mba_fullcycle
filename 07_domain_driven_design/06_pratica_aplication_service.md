@@ -380,9 +380,352 @@ Podemos ter um changeLocation
 
 ## Modelagem de order e reserva
 
+Considerando criar as regras de order e reserva
+
+```ts
+export enum OrderStatus {
+  PENDING,
+  PAID,
+  CANCELLED,
+}
+
+export class OrderId extends Uuid {}
+
+export type OrderConstructorProps = {
+  id?: OrderId | string;
+  customer_id: CustomerId;
+  amount: number;
+  event_spot_id: EventSpotId;
+};
+
+export class Order extends AggregateRoot {
+  id: OrderId;
+  customer_id: CustomerId;
+  amount: number;
+  event_spot_id: EventSpotId;
+  status: OrderStatus = OrderStatus.PENDING;
+
+  constructor(props: OrderConstructorProps) {
+    super();
+    this.id =
+      typeof props.id === 'string'
+        ? new OrderId(props.id)
+        : props.id ?? new OrderId();
+    this.amount = props.amount;
+    this.customer_id =
+      props.customer_id instanceof CustomerId
+        ? props.customer_id
+        : new CustomerId(props.customer_id);
+    this.event_spot_id =
+      props.event_spot_id instanceof EventSpotId
+        ? props.event_spot_id
+        : new EventSpotId(props.event_spot_id);
+  }
+
+  static create(props: OrderConstructorProps) {
+    const order = new Order(props);
+    return order;
+  }
+
+  pay() {
+    this.status = OrderStatus.PAID;
+    this.addEvent(new OrderPaid(this.id, this.status));
+  }
+
+  cancel() {
+    this.status = OrderStatus.CANCELLED;
+    this.addEvent(new OrderCancelled(this.id, this.status));
+  }
+
+  toJSON() {
+    return {
+      id: this.id.value,
+      amount: this.amount,
+      customer_id: this.customer_id.value,
+      event_spot_id: this.event_spot_id.value,
+    };
+  }
+}
+```
+
+```ts
+export type SpotReservationCreateCommand = {
+  spot_id: EventSpotId | string;
+  customer_id: CustomerId;
+};
+
+export type SpotReservationConstructorProps = {
+  spot_id: EventSpotId | string;
+  reservation_date: Date;
+  customer_id: CustomerId;
+};
+
+export class SpotReservation extends AggregateRoot {
+  spot_id: EventSpotId;
+  reservation_date: Date;
+  customer_id: CustomerId;
+
+  constructor(props: SpotReservationConstructorProps) {
+    super();
+    this.spot_id =
+      props.spot_id instanceof EventSpotId
+        ? props.spot_id
+        : new EventSpotId(props.spot_id);
+    this.reservation_date = props.reservation_date;
+    this.customer_id =
+      props.customer_id instanceof CustomerId
+        ? props.customer_id
+        : new CustomerId(props.customer_id);
+  }
+
+  static create(command: SpotReservationCreateCommand) {
+    const reservation = new SpotReservation({
+      spot_id: command.spot_id,
+      customer_id: command.customer_id,
+      reservation_date: new Date(),
+    });
+    reservation.addEvent(
+      new SpotReservationCreated(
+        reservation.spot_id,
+        reservation.reservation_date,
+        reservation.customer_id,
+      ),
+    );
+    return reservation;
+  }
+
+  changeReservation(customer_id: CustomerId) {
+    this.customer_id = customer_id;
+    this.reservation_date = new Date();
+    this.addEvent(
+      new SpotReservationChanged(
+        this.spot_id,
+        this.reservation_date,
+        this.customer_id,
+      ),
+    );
+  }
+
+  toJSON() {
+    return {
+      spot_id: this.spot_id.value,
+      customer_id: this.customer_id.value,
+      reservation_date: this.reservation_date,
+    };
+  }
+}
+
+```
+
+- Reserva serve basicamente para garantir que um spot fique para um pessoa so
+- Está tudo bem a indentidade de reservation ser aproveitada
+- Por consequenecia temos que criar o schema e os repositorios
 
 ## Operacao de reserva
 
+Em order service vamos efetivar essa reserva
+
+Sendo assim em `order-service` vamos ter esse trabalho de criar um order e tambem um reservation. Sendo assim esse application service vai injetar, `IOrderRepository` (que vai adicionar a order no banco) `ISpotReservationRepository` que vai adicionar a reservation no banco, `IUnitOfWork`, `ICustomerRepository`(para checkar que existe o costumer), `IEventRepository` em que vamos buscar dados do evento para fazer a reserva nele.
+
+Importante ver algumas regras a serem feitas utilizando o agregado de event como `allowReserveSpot` e `markSpotAsReserved` na sessao e spot do evento em questao:
+
+```ts
+export class Event extends AggregateRoot {
+  ...
+
+  allowReserveSpot(data: { section_id: EventSectionId; spot_id: EventSpotId }) {
+    if (!this.is_published) {
+      return false;
+    }
+
+    const section = this.sections.find((s) => s.id.equals(data.section_id));
+    if (!section) {
+      throw new Error('Section not found');
+    }
+
+    return section.allowReserveSpot(data.spot_id);
+  }
+
+    markSpotAsReserved(command: {
+    section_id: EventSectionId;
+    spot_id: EventSpotId;
+  }) {
+    const section = this.sections.find((s) => s.id.equals(command.section_id));
+
+    if (!section) {
+      throw new Error('Section not found');
+    }
+
+    section.markSpotAsReserved(command.spot_id);
+    this.addEvent(
+      new EventMarkedSportAsReserved(this.id, section.id, command.spot_id),
+    );
+  }
+}
+```
 
 ## Precisamos de do modo transaçao
+
+Para lidar bem com pagamento precisar lidar melhor com transacao. Podemos fazer a resevar num lugar e fazer o pagamento de forma controlada.
+Tendo certeza que nao tem reserva dupla só deixar o pagamento ser feito nesse caso, alem disso se o pagamento teve sucesso efetivar a reserva.
+
+Para garantir consistencia em toda essa operacao precisamos realmeente trabalhar com transação
+
+## Modo transation no unit of work
+
+Vamos colocar mais metodos na interface do unit of work
+
+```ts
+export interface IUnitOfWork {
+  beginTransaction(): Promise<void>;
+  completeTransaction(): Promise<void>;
+  rollbackTransaction(): Promise<void>;
+  runTransaction<T>(callback: () => Promise<T>): Promise<T>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+```
+
+E implementar
+
+```ts
+export class UnitOfWorkMikroOrm implements IUnitOfWork {
+  constructor(private em: EntityManager) {}
+
+  beginTransaction(): Promise<void> {
+    return this.em.begin();
+  }
+  completeTransaction(): Promise<void> {
+    return this.em.commit();
+  }
+  rollbackTransaction(): Promise<void> {
+    return this.em.rollback();
+  }
+
+  runTransaction<T>(callback: () => Promise<T>): Promise<T> {
+    return this.em.transactional(callback);
+  }
+
+  commit(): Promise<void> {
+    return this.em.flush();
+  }
+
+  async rollback(): Promise<void> {
+    this.em.clear();
+  }
+}
+```
+
+Utilizando o `runTransaction` podemos deixar todo a funcao passada como parametro como argumento a ser feito dentro de uma transaçao se completa todo unicamente.
+
+Podemos inclusive ter uma forma de salvar a order como cancelada quando tivemos um conflito
+
+```ts
+export class OrderService {
+  constructor(
+    private orderRepo: IOrderRepository,
+    private customerRepo: ICustomerRepository,
+    private eventRepo: IEventRepository,
+    private spotReservationRepo: ISpotReservationRepository,
+    private uow: IUnitOfWork,
+    private paymentGateway: PaymentGateway,
+  ) {}
+
+  list() {
+    return this.orderRepo.findAll();
+  }
+
+  async create(input: {
+    event_id: string;
+    section_id: string;
+    spot_id: string;
+    customer_id: string;
+    card_token: string;
+  }) {
+    //const {customer, event} = Promise.all([])
+    const customer = await this.customerRepo.findById(input.customer_id);
+
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+
+    const event = await this.eventRepo.findById(input.event_id);
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    const sectionId = new EventSectionId(input.section_id);
+    const spotId = new EventSpotId(input.spot_id);
+
+    if (!event.allowReserveSpot({ section_id: sectionId, spot_id: spotId })) {
+      throw new Error('Spot not available');
+    }
+
+    const spotReservation = await this.spotReservationRepo.findById(spotId);
+
+    if (spotReservation) {
+      throw new Error('Spot already reserved');
+    }
+    return this.uow.runTransaction(async () => {
+      const spotReservationCreated = SpotReservation.create({
+        spot_id: spotId,
+        customer_id: customer.id,
+      });
+
+      await this.spotReservationRepo.add(spotReservationCreated);
+      try {
+        await this.uow.commit();
+        const section = event.sections.find((s) => s.id.equals(sectionId));
+        await this.paymentGateway.payment({
+          token: input.card_token,
+          amount: section.price,
+        });
+
+        const order = Order.create({
+          customer_id: customer.id,
+          event_spot_id: spotId,
+          amount: section.price,
+        });
+        order.pay();
+        await this.orderRepo.add(order);
+
+        event.markSpotAsReserved({
+          section_id: sectionId,
+          spot_id: spotId,
+        });
+
+        this.eventRepo.add(event);
+
+        await this.uow.commit();
+        return order;
+      } catch (e) {
+        const section = event.sections.find((s) => s.id.equals(sectionId));
+        const order = Order.create({
+          customer_id: customer.id,
+          event_spot_id: spotId,
+          amount: section.price,
+        });
+        order.cancel();
+        this.orderRepo.add(order);
+        await this.uow.commit();
+        throw new Error('Aconteceu um erro reservar o seu lugar');
+      }
+    });
+  }
+}
+
+```
+
+
+- Garantimos dentro do runTransaction com o try em no primeiro `await this.uow.commit()` 
+    - Se eu estiver tentando fazer uma reserva que diferentemente da verirficacao inical agora ja nao tem mais lugar (dara erro no commit por consistencia no banco) vamos inserir uma order cancelada
+    - Da mesma forma se `this.paymentGateway.payment` falhar tambem nao completaremos e inserimos uma order com falha
+    - Se tudo der certo o commit será feito corretamente
+    - Nao da para controllar isso apenas com flush
+
+
+## Anti corruption layer pagamentos
+
+Tendo um servico novo de pagamento ja proteje a gente como ACL para nao estamos com regras do pagamento dentro do nosso service. Considerando que temos uma integracao conformista pois o api de pagamento nao vai se adaptar a nós
 
