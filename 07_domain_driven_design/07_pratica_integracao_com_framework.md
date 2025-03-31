@@ -2,7 +2,7 @@ Utilizando Nestjs, criamos todas as camadas dele fora da pasta `@core`, ele trab
 
 - No diretorio `database` criamos um `database.module` em que vamos de forma global com nestjs criar as instancias do entitityManager (schemas)
 
-- No diretorio `events` criamos um `events.module`, em que vamos de forma global o application services e controllers
+- No diretorio `events` criamos um `events.module`, em que vamos de forma global criar instancias do application services e controllers
 
 # Criando endpoints da API Rest
 

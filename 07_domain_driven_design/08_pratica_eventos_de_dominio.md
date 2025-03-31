@@ -287,3 +287,234 @@ export class PartnerService {
 
 - Unit of work nao é mais injetado aqui
 - Em todo caso que é feito uma operacao (commando/persistencia) eu utilizo o `applicationService.run`
+
+# Integrando eventos e listeners
+
+Criamos Um modulo domain-events global com arquivo `domain-events.module`
+
+```ts
+@Global()
+@Module({
+  providers: [DomainEventManager]
+  exports: [DomainEventManager],
+})
+export class DomainEventsModule {}
+```
+
+- Que vai prover um DomainEventManager global que os outros modulos podem utilizar
+
+
+Criamos um modulo aplication com um arquivo `application.module`
+
+```ts
+@Module({
+  providers: [
+    {
+      provide: ApplicationService,
+      useFactory: (
+        uow: IUnitOfWork,
+        domainEventManager: DomainEventManager,
+      ) => {
+        return new ApplicationService(uow, domainEventManager);
+      },
+      inject: ['IUnitOfWork', DomainEventManager],
+    },
+  ],
+  exports: [ApplicationService],
+})
+export class ApplicationModule {}
+```
+
+- Que vai prover uma instancia de ApplicationService
+- Precisar passar certinho as instancias injetadas
+    - O unit of work vem do modulo database exportado como `IUnitOfWork` de forma global
+    - O Aplication service vem do modulo application domain-events que acabamos de criar de forma global 
+- Nao vamos deixar esse modulo global, sendo assim vamos precisar de importar onde for utilizar
+
+Sendo assim no modulo events, precisamos importar o ApplicationModule e trocar para um service especifico para utilizar ele
+
+
+```ts
+@Module({
+  imports: [
+    MikroOrmModule.forFeature([
+      CustomerSchema,
+      PartnerSchema,
+      EventSchema,
+      EventSectionSchema,
+      EventSpotSchema,
+      OrderSchema,
+      SpotReservationSchema,
+    ]),
+    ApplicationModule,
+  ],
+  providers: [
+    ...
+
+    {
+      provide: PartnerService,
+      useFactory: (
+        partnerRepo: IPartnerRepository,
+        appService: ApplicationService,
+      ) => new PartnerService(partnerRepo, appService),
+      inject: ['IPartnerRepository', ApplicationService],
+    },
+    ....
+  ],
+ ...
+})
+export class EventsModule implements OnModuleInit {
+    constructor(private readonly domainEventManager: DomainEventManager) {}
+
+    onModuleInit() {
+        this.domainEventManager.register(
+            PartnerCreated.name,
+            (event: PartnerCreated) => {
+                console.log('PartnerCreated event received', event);
+            },
+        );
+    }
+}
+```
+
+- Implementamos `OnModuleInit` para que inicio do modulo possamos registrar eventos
+- No caso atual, estamos registrando que ao criar um parter, vamos dar um print apenas
+- DomainEventManager precisou ser global para ser unico com todos os registros
+
+
+# Criando classe como listener
+
+Listeners estao na camada de applicationService, a ideia deles é tirar responsabilidade de dentro do application service, como o envio de um email. Entao vamos criar um MyHandler como exemplo em `@core/events/application/handlers/my-handler.handler.ts` que implementa uma interface na mesma camada em `@core/common/application/domain-event-handler.interface.ts`
+
+```ts
+import { IDomainEvent } from '../domain/domain-event';
+
+export interface IDomainEventHandler {
+  handle(event: IDomainEvent): Promise<void>;
+}
+```
+
+```ts
+import { IDomainEventHandler } from '../../../common/application/domain-event-handler.interface';
+import { DomainEventManager } from '../../../common/domain/domain-event-manager';
+import { PartnerCreated } from '../../domain/events/domain-events/partner-created.event';
+import { IPartnerRepository } from '../../domain/repositories/partner-repository.interface';
+
+export class MyHandlerHandler implements IDomainEventHandler {
+  constructor(
+    private partnerRepo: IPartnerRepository,
+    private domainEventManager: DomainEventManager,
+  ) {}
+
+  async handle(event: PartnerCreated): Promise<void> {
+    console.log(event);
+    //manipular agregados
+    //this.partnerRepo.add()
+    //await this.domainEventManager.publish(agregado)
+  }
+
+  static listensTo(): string[] {
+    return [PartnerCreated.name];
+  }
+}
+
+```
+
+- Um handler nao pode acessar um aplication service
+- Ele pode acessar repositorios
+- Ele vai acabar sendo completado pelo unit of work do applicationService que publicou os eventos
+- Podemos injetar `DomainEventManager` caso necessario publicar mais eventos que no fim tambem serao chamadas mais possiveis listeners
+- Criamos um metodo estatico para deixar logo aqui quem queremos ser listeners para utilizar na criacao do modulo do nestjs
+
+Sendo assim no arquivo `events.module`
+
+```ts
+@Module({
+  ...
+  providers: [
+    ...
+
+    {
+      provide: MyHandlerHandler,
+      useFactory: (
+        partnerRepo: IPartnerRepository,
+        domainEventManager: DomainEventManager,
+      ) => new MyHandlerHandler(partnerRepo, domainEventManager),
+      inject: ['IPartnerRepository', DomainEventManager],
+    },
+    ....
+  ],
+ ...
+})
+export class EventsModule implements OnModuleInit {
+  constructor(
+    private readonly domainEventManager: DomainEventManager,
+    private moduleRef: ModuleRef,
+  ) {}
+
+  onModuleInit() {
+    console.log('EventsModule initialized');
+    MyHandlerHandler.listensTo().forEach((eventName: string) => {
+      this.domainEventManager.register(eventName, async (event) => {
+        const handler: MyHandlerHandler = await this.moduleRef.resolve(
+          MyHandlerHandler,
+        );
+        await handler.handle(event);
+      });
+    });
+  }
+}
+
+```
+
+- Registramos para prover uma instancia de `MyHandlerHandler` injetando um repository e o `DomainEventManager` como queremos publicar mais possiveis eventos registrados
+- Ajustamos para que o MyHandler seja listener do `PartnerCreated` (atravez de metodo estatico)
+
+# Criando evento de integracao
+
+Esse tem a funcionalidade notifica fora do meu subdominio (Ex ao registrar um reversa, deve se enviar email, que esta em outro subdominio)
+
+Sendo assim vamos criar um app totalmente diferente chamado `emails`. Fazendo comunicacao asyncrona.
+
+
+Vamos criar na aplicacao antiga em `@core/events/domain/events/integration-events/partner-created.int-events.ts` implementando uma interface 
+`@core/common/domain/integration-event.ts`
+
+```ts
+export interface IIntegrationEvent<T = any> {
+  event_name: string;
+  payload: T;
+  event_version: number;
+  occurred_on: Date;
+}
+```
+
+```ts
+import { IIntegrationEvent } from '../../../../common/domain/integration-event';
+import { PartnerCreated } from '../domain-events/partner-created.event';
+
+export class PartnerCreatedIntegrationEvent implements IIntegrationEvent {
+  event_name: string;
+  payload: any;
+  event_version: number;
+  occurred_on: Date;
+
+  constructor(domainEvent: PartnerCreated) {
+    this.event_name = PartnerCreatedIntegrationEvent.name;
+    this.payload = {
+      id: domainEvent.aggregate_id.value,
+      name: domainEvent.name,
+    };
+    this.event_version = 1;
+    this.occurred_on = domainEvent.occurred_on;
+  }
+}
+```
+
+
+
+- Como estamos falando de eventos de integracai, faz sentido uma comunicao mais formal com um campo de `payload` e um campo que identifique o evento em si
+- O evento de integracao vai ser disparado atravez de um evento de dominio, portanto ele será criado esperando um obejto de evento de dominio no construtor.
+
+
+Como manter a publicacao mais resiliente? (preocupando se ela nao acontecer)
