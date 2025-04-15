@@ -518,3 +518,14 @@ export class PartnerCreatedIntegrationEvent implements IIntegrationEvent {
 
 
 Como manter a publicacao mais resiliente? (preocupando se ela nao acontecer)
+
+Podemos usar padrao Outbox
+
+A ideia é simples:
+	1.	Ao salvar um dado no banco de dados, você também salva uma mensagem de evento em uma tabela “outbox” no mesmo banco e na mesma transação.
+	2.	Um processo separado (como um worker ou um serviço agendado) lê essa tabela e publica os eventos na fila ou broker.
+	3.	Após o envio bem-sucedido, o evento é marcado como enviado ou removido da tabela.
+
+
+# Event sourcing e replay dos agregados
+
