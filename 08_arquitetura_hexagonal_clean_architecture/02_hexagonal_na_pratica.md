@@ -297,6 +297,24 @@ public class CustomerController {
 Assim como agora podemos ter uma implementacao para GraphQl, utilizando o useCase
 
 ```java
+@Controller
+public class CustomerResolver {
+
+    private final CustomerService customerService;
+
+    public CustomerResolver(final CustomerService customerService) {
+        this.customerService = Objects.requireNonNull(customerService);
+    }
+
+    @MutationMapping
+    public CreateCustomerUseCase.Output createCustomer(@Argument CustomerDTO input) {
+        final var useCase = new CreateCustomerUseCase(customerService);
+        return useCase.execute(new CreateCustomerUseCase.Input(
+            input.getCpf(), input.getEmail(), input.getName()));
+    }
+
+    ...
+}
 ```
 
 - Por enquanto nao estamos usando injecao de dependencia para o `CreateCustomerUseCase`
@@ -308,3 +326,106 @@ Sendo assim tirar as regras de negocio acopladas ao driver(RestAPI).
 - O caso de uso está expondo a porta
 - Que torna o controller um adapter
 - Assim como resolver do GraphQl tambem um adapter, que acessa a porta do useCase do createCostumer
+
+# Extraindo os casos de uso implicitos
+
+Tambem precisamos criar um use case novo tambem de costumer `application/usecases/GetCustomerByIdUseCase`
+
+```java
+package br.com.fullcycle.hexagonal.application.usecases;
+
+import br.com.fullcycle.hexagonal.services.CustomerService;
+
+import java.util.Objects;
+import java.util.Optional;
+
+public class GetCustomerByIdUseCase
+    extends UseCase<GetCustomerByIdUseCase.Input, Optional<GetCustomerByIdUseCase.Output>> {
+
+    private final CustomerService customerService;
+
+    public GetCustomerByIdUseCase(final CustomerService customerService) {
+        this.customerService = Objects.requireNonNull(customerService);
+    }
+
+    @Override
+    public Optional<Output> execute(final Input input) {
+        return customerService.findById(input.id)
+            .map(c -> new Output(c.getId(), c.getCpf(), c.getEmail(), c.getName()));
+    }
+
+    public record Input(Long id) {}
+
+    public record Output(Long id, String cpf, String email, String name) {}
+}
+```
+
+- Lembrando de tambem ajustar o controller e o resolver do grphQl para utilizar
+
+Temos 2 usecases de parter tambem para criar
+
+
+- `application/usecases/CreatePartnerUseCase`
+
+```java
+
+public class CreatePartnerUseCase extends UseCase<CreatePartnerUseCase.Input, CreatePartnerUseCase.Output> {
+
+    private final PartnerService partnerService;
+
+    public CreatePartnerUseCase(final PartnerService partnerService) {
+        this.partnerService = Objects.requireNonNull(partnerService);
+    }
+
+    @Override
+    public Output execute(final Input input) {
+        if (partnerService.findByCnpj(input.cnpj()).isPresent()) {
+            throw new ValidationException("Partner already exists");
+        }
+
+        if (partnerService.findByEmail(input.email()).isPresent()) {
+            throw new ValidationException("Partner already exists");
+        }
+
+        var partner = new Partner();
+        partner.setName(input.name());
+        partner.setCnpj(input.cnpj());
+        partner.setEmail(input.email());
+
+        partner = partnerService.save(partner);
+
+        return new Output(partner.getId(), partner.getCnpj(), partner.getEmail(), partner.getName());
+    }
+
+    public record Input(String cnpj, String email, String name) {}
+
+    public record Output(Long id, String cnpj, String email, String name) {}
+}
+```
+
+- `application/usecases/GetPartnerByIdUseCase`
+
+
+```java
+public class GetPartnerByIdUseCase 
+    extends UseCase<GetPartnerByIdUseCase.Input, Optional<GetPartnerByIdUseCase.Output>> {
+
+    private final PartnerService partnerService;
+
+    public GetPartnerByIdUseCase(final PartnerService partnerService) {
+        this.partnerService = Objects.requireNonNull(partnerService);
+    }
+
+    @Override
+    public Optional<Output> execute(final Input input) {
+        return partnerService.findById(input.id)
+            .map(p -> new Output(p.getId(), p.getCnpj(), p.getEmail(), p.getName()));
+    }
+
+    public record Input(Long id) {}
+
+    public record Output(Long id, String cnpj, String email, String name) {}
+}
+```
+
+Tambem ajustando o controller `PartnerController` correspondente
