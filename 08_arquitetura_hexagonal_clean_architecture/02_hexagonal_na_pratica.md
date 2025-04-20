@@ -1172,3 +1172,45 @@ public class CreatePartnerUseCase extends UseCase<CreatePartnerUseCase.Input, Cr
 ```
 
 - obviamente fazendo a mesma coisa para `GetPartnerByIdUseCase`
+
+## Parte 3
+
+- Value object para Name é necessario?
+    - Cada literatura fala uma coisa, na essencia a String já seria suficiente
+
+
+
+- Parece mais correto o Value object de id guardarem String ao inves de UUID
+    - assim evitamos os chamados term que fazer o `.toString()` fora
+
+Sendo assim vamos criar um value object para EventId
+
+```java
+package br.com.fullcycle.hexagonal.application.domain.event;
+
+import br.com.fullcycle.hexagonal.application.exceptions.ValidationException;
+
+import java.util.UUID;
+
+public record EventId(String value) {
+
+    public EventId {
+        if (value == null) {
+            throw new ValidationException("Invalid value for EventId");
+        }
+    }
+
+    public static EventId unique() {
+        return new EventId(UUID.randomUUID().toString());
+    }
+
+    public static EventId with(final String value) {
+        try {
+            return new EventId(UUID.fromString(value).toString());
+        } catch (IllegalArgumentException ex) {
+            throw new ValidationException("Invalid value for EventId");
+        }
+    }
+}
+```
+
