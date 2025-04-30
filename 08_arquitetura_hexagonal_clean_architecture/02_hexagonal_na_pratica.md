@@ -1,4 +1,4 @@
-Vamos refatorar um projeto que utiliza spring, [na branch main](fhttps://github.com/devfullcycle/MBA-hexagonal-architecture).
+Vamos refatorar um projeto que utiliza spring, [na branch main](https://github.com/devfullcycle/MBA-hexagonal-architecture).
 
 Um servico que é um restapi para compra de tickets de evento. Que está em camadas e utiliza serviceLayers.
 
@@ -1214,3 +1214,811 @@ public record EventId(String value) {
 }
 ```
 
+
+//TODO: Criacao de entidade de evento
+
+## Parte 4
+
+Uma boa abordagem para evitar validacoes no construtor e reaproveitar elas em possiveis diferentes momentos, é ter setter com elas...
+Ta tudo bem ter setter privados com atributos mutaveis(que nao sao identidades). 
+
+Se os setters fossem publicos a entidades ficam com cara de anemicas
+
+Sendo assim podemos utilizar `Event` como exemplo
+
+```java
+public class Event {
+
+    private final EventId eventId;
+    private Name name;
+    private LocalDate date;
+    private int totalSpots;
+    private PartnerId partnerId;
+
+    public Event(
+            final EventId eventId,
+            final String name,
+            final String date,
+            final Integer totalSpots,
+            final PartnerId partnerId,
+
+    ) {
+        this(eventId, tickets);
+        this.setName(name);
+        this.setDate(date);
+        this.setTotalSpots(totalSpots);
+        this.setPartnerId(partnerId);
+    }
+
+    private Event(final EventId eventId, final Set<EventTicket> tickets) {
+        if (eventId == null) {
+            throw new ValidationException("Invalid eventId for Event");
+        }
+
+        this.eventId = eventId;
+    }
+
+    public static Event newEvent(final String name, final String date, final Integer totalSpots, final Partner partner) {
+        return new Event(EventId.unique(), name, date, totalSpots, partner.partnerId(), null);
+    }
+
+    public EventId eventId() {
+        return eventId;
+    }
+
+    public Name name() {
+        return name;
+    }
+
+    public LocalDate date() {
+        return date;
+    }
+
+    public int totalSpots() {
+        return totalSpots;
+    }
+
+    public PartnerId partnerId() {
+        return partnerId;
+    }
+
+    private void setName(final String name) {
+        this.name = new Name(name);
+    }
+
+    private void setDate(final String date) {
+        if (date == null) {
+            throw new ValidationException("Invalid date for Event");
+        }
+
+        try {
+            this.date = LocalDate.parse(date, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (RuntimeException ex) {
+            throw new ValidationException("Invalid date for Event", ex);
+        }
+    }
+
+    private void setPartnerId(final PartnerId partnerId) {
+        if (partnerId == null) {
+            throw new ValidationException("Invalid totalSpots for Event");
+        }
+
+        this.partnerId = partnerId;
+    }
+
+    private void setTotalSpots(final Integer totalSpots) {
+        if (totalSpots == null) {
+            throw new ValidationException("Invalid totalSpots for Event");
+        }
+
+        this.totalSpots = totalSpots;
+    }
+}
+```
+
+- Validadores ficam nos setters
+- Constrututor reaproveita esses setters (com as devidas validaçoes)
+
+Pensando em que tickets que seria outro agregado, pode criar ele tambem no mesmo padrao com objeto de valor para id e um para Status
+
+```java
+public class Ticket {
+
+    private final TicketId ticketId;
+    private CustomerId customerId;
+    private EventId eventId;
+    private TicketStatus status;
+    private Instant paidAt;
+    private Instant reservedAt;
+
+    public Ticket(
+            final TicketId ticketId,
+            final CustomerId customerId,
+            final EventId eventId,
+            final TicketStatus status,
+            final Instant paidAt,
+            final Instant reservedAt
+    ) {
+        this.ticketId = ticketId;
+        this.setCustomerId(customerId);
+        this.setEventId(eventId);
+        this.setStatus(status);
+        this.setPaidAt(paidAt);
+        this.setReservedAt(reservedAt);
+    }
+
+    public static Ticket newTicket(final CustomerId customerId, final EventId eventId) {
+        return new Ticket(TicketId.unique(), customerId, eventId, TicketStatus.PENDING, null, Instant.now());
+    }
+
+    public TicketId ticketId() {
+        return ticketId;
+    }
+
+    public CustomerId customerId() {
+        return customerId;
+    }
+
+    public EventId eventId() {
+        return eventId;
+    }
+
+    public TicketStatus status() {
+        return status;
+    }
+
+    public Instant paidAt() {
+        return paidAt;
+    }
+
+    public Instant reservedAt() {
+        return reservedAt;
+    }
+
+    private void setCustomerId(final CustomerId customerId) {
+        if (customerId == null) {
+            throw new ValidationException("Invalid customerId for Ticket");
+        }
+
+        this.customerId = customerId;
+    }
+
+    private void setEventId(final EventId eventId) {
+        if (eventId == null) {
+            throw new ValidationException("Invalid eventId for Ticket");
+        }
+
+        this.eventId = eventId;
+    }
+
+    private void setStatus(final TicketStatus status) {
+        if (status == null) {
+            throw new ValidationException("Invalid status for Ticket");
+        }
+
+        this.status = status;
+    }
+
+    private void setPaidAt(Instant paidAt) {
+        this.paidAt = paidAt;
+    }
+
+    private void setReservedAt(Instant reservedAt) {
+        if (reservedAt == null) {
+            throw new ValidationException("Invalid reservedAt for Ticket");
+        }
+
+        this.reservedAt = reservedAt;
+    }
+}
+```
+
+E dentro do agregado de evento vamos ter uma lista de `EventTicket` que vai servir para vincular quais ticket foram vendidos desse evento em si
+
+
+```java
+public class EventTicket {
+
+    private final TicketId ticketId;
+    private final EventId eventId;
+    private final CustomerId customerId;
+    private int ordering;
+
+    public EventTicket(final TicketId ticketId, final EventId eventId, final CustomerId customerId, final Integer ordering) {
+        if (ticketId == null) {
+            throw new ValidationException("Invalid ticketId for EventTicket");
+        }
+
+        if (eventId == null) {
+            throw new ValidationException("Invalid eventId for EventTicket");
+        }
+
+        if (customerId == null) {
+            throw new ValidationException("Invalid customerId for EventTicket");
+        }
+
+        this.ticketId = ticketId;
+        this.eventId = eventId;
+        this.customerId = customerId;
+        this.setOrdering(ordering);
+    }
+
+    public TicketId ticketId() {
+        return ticketId;
+    }
+
+    public EventId eventId() {
+        return eventId;
+    }
+
+    public int ordering() {
+        return ordering;
+    }
+
+    public CustomerId customerId() {
+        return customerId;
+    }
+
+    private void setOrdering(final Integer ordering) {
+        if (ordering == null) {
+            throw new ValidationException("Invalid ordering for EventTicket");
+        }
+
+        this.ordering = ordering;
+    }
+}
+```
+
+Dessa forma atualizamos evento para ter essa lista.
+Da mesma forma com que o proprio `Event` que será reponsavel para efetuar um reserva (criar um ticket)
+Sendo assim temos atualizacao em event
+
+
+
+```java
+public class Event {
+
+    private static final int ONE = 1;
+
+    private final EventId eventId;
+    private Name name;
+    private LocalDate date;
+    private int totalSpots;
+    private PartnerId partnerId;
+    private Set<EventTicket> tickets;
+
+    public Event(
+            final EventId eventId,
+            final String name,
+            final String date,
+            final Integer totalSpots,
+            final PartnerId partnerId,
+            final Set<EventTicket> tickets
+    ) {
+        this(eventId, tickets);
+        this.setName(name);
+        this.setDate(date);
+        this.setTotalSpots(totalSpots);
+        this.setPartnerId(partnerId);
+    }
+
+    private Event(final EventId eventId, final Set<EventTicket> tickets) {
+        if (eventId == null) {
+            throw new ValidationException("Invalid eventId for Event");
+        }
+
+        this.eventId = eventId;
+        this.tickets = tickets != null ? tickets : new HashSet<>(0);
+    }
+
+    public static Event newEvent(final String name, final String date, final Integer totalSpots, final Partner partner) {
+        return new Event(EventId.unique(), name, date, totalSpots, partner.partnerId(), null);
+    }
+
+    public Ticket reserveTicket(final CustomerId aCustomerId) {
+        this.allTickets().stream()
+                .filter(it -> Objects.equals(it.customerId(), aCustomerId))
+                .findFirst()
+                .ifPresent(it -> {
+                    throw new ValidationException("Email already registered");
+                });
+
+        if (totalSpots() < allTickets().size() + ONE) {
+            throw new ValidationException("Event sold out");
+        }
+
+        final var newTicket =
+                Ticket.newTicket(aCustomerId, eventId());
+
+        this.tickets.add(new EventTicket(newTicket.ticketId(), eventId(), aCustomerId, allTickets().size() + 1));
+
+        return newTicket;
+    }
+
+...
+}
+```
+
+- reserveTicket para um custumer verifica se o custumer se nao tem uma reserva
+- verifica se existe lugar disponivel
+- cria o ticket
+- gerencia a lista de eventTickets do agregado
+
+# Interface adapters de custumer, partner and ticket
+
+Falando ainda de entidade, todas elas devem sobrescrever o equals e hashcode de forma a considerar apenas a identidade
+
+```java
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Event event = (Event) o;
+        return Objects.equals(eventId, event.eventId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(eventId);
+    }
+```
+
+Vamos entao focar nos adapters criar repositorios `DatabaseRepository` para implementar `CustomerRepository`, `EventRepository`, `PartnerRepository` e `TicketRepository`.
+
+Comecando de `hexagonal/infrastructure/repositories/CustomerDatabaseRepository.java`
+
+```java
+// Interface Adapter
+@Component
+public class CustomerDatabaseRepository implements CustomerRepository {
+
+    private final CustomerJpaRepository customerJpaRepository;
+
+    public CustomerDatabaseRepository(final CustomerJpaRepository customerJpaRepository) {
+        this.customerJpaRepository = Objects.requireNonNull(customerJpaRepository);
+    }
+
+    @Override
+    public Optional<Customer> customerOfId(final CustomerId anId) {
+        Objects.requireNonNull(anId, "id cannot be null");
+        return this.customerJpaRepository.findById(UUID.fromString(anId.value()))
+                .map(CustomerEntity::toCustomer);
+    }
+
+    @Override
+    public Optional<Customer> customerOfCPF(final Cpf cpf) {
+        Objects.requireNonNull(cpf, "Cpf cannot be null");
+        return this.customerJpaRepository.findByCpf(cpf.value())
+                .map(CustomerEntity::toCustomer);
+    }
+
+    @Override
+    public Optional<Customer> customerOfEmail(final Email email) {
+        Objects.requireNonNull(email, "Email cannot be null");
+        return this.customerJpaRepository.findByEmail(email.value())
+                .map(CustomerEntity::toCustomer);
+    }
+
+    @Override
+    @Transactional
+    public Customer create(final Customer customer) {
+        return this.customerJpaRepository.save(CustomerEntity.of(customer))
+                .toCustomer();
+    }
+
+    @Override
+    @Transactional
+    public Customer update(Customer customer) {
+        return this.customerJpaRepository.save(CustomerEntity.of(customer))
+                .toCustomer();
+    }
+
+    @Override
+    public void deleteAll() {
+        this.customerJpaRepository.deleteAll();
+    }
+}
+```
+
+
+
+- Em que nessa refatoracao estamos aproveitando o `CustomerJpaRepository` ja existente que usa o ORM. 
+- Vamos ter um entidade focada no banco relacional `CustomerEntity` mapeando essas colunas do banco
+- Podemos colocar transational do spring nos casos que vamos salvar nesse agregado
+
+
+`hexagonal/infrastructure/jpa/entities/CustomerEntity.java` ficaria:
+
+```java
+@Entity(name = "Customer")
+@Table(name = "customers")
+public class CustomerEntity {
+
+    @Id
+    private UUID id;
+
+    private String name;
+
+    private String cpf;
+
+    private String email;
+
+    public CustomerEntity() {
+    }
+
+    public CustomerEntity(UUID id, String name, String cpf, String email) {
+        this.id = id;
+        this.name = name;
+        this.cpf = cpf;
+        this.email = email;
+    }
+
+    public static CustomerEntity of(final Customer customer) {
+        return new CustomerEntity(
+                UUID.fromString(customer.customerId().value()),
+                customer.name().value(),
+                customer.cpf().value(),
+                customer.email().value()
+        );
+    }
+
+    public Customer toCustomer() {
+        return new Customer(CustomerId.with(this.id.toString()), this.name, this.cpf, this.email);
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CustomerEntity customer = (CustomerEntity) o;
+        return Objects.equals(id, customer.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+}
+
+```
+
+- Essa realmente está acoplada como JPA (usando anotacoes para mapear coluna, etc)
+- Podemos criar o `of()` e `toCustomer()` para converter entre esse modelo e a entidade do domain em si
+
+Basicamente faremos a mesma coisa para  `PartnerRepository` e `TicketRepository`, com a atencao para que `TicketEntity` nao tem internamente um `Event` sendo utilizado, apenas `enventId`
+
+
+```java
+@Entity(name = "Ticket")
+@Table(name = "tickets")
+public class TicketEntity {
+
+    @Id
+    private UUID id;
+
+    private UUID customerId;
+
+    private UUID eventId;
+
+    @Enumerated(EnumType.STRING)
+    private TicketStatus status;
+
+    private Instant paidAt;
+
+    private Instant reservedAt;
+
+    public TicketEntity() {
+    }
+
+    public TicketEntity(
+            final UUID id,
+            final UUID customerId,
+            final UUID eventId,
+            final TicketStatus status,
+            final Instant paidAt,
+            final Instant reservedAt
+    ) {
+        this.id = id;
+        this.customerId = customerId;
+        this.eventId = eventId;
+        this.status = status;
+        this.paidAt = paidAt;
+        this.reservedAt = reservedAt;
+    }
+
+    public static TicketEntity of(final Ticket ticket) {
+        return new TicketEntity(
+                UUID.fromString(ticket.ticketId().value()),
+                UUID.fromString(ticket.customerId().value()),
+                UUID.fromString(ticket.eventId().value()),
+                ticket.status(),
+                ticket.paidAt(),
+                ticket.reservedAt()
+        );
+    }
+
+    public Ticket toTicket() {
+        return new Ticket(
+                TicketId.with(this.id.toString()),
+                CustomerId.with(this.customerId.toString()),
+                EventId.with(this.eventId.toString()),
+                this.status,
+                this.paidAt,
+                this.reservedAt
+        );
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public UUID customerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(UUID customerId) {
+        this.customerId = customerId;
+    }
+
+    public UUID eventId() {
+        return eventId;
+    }
+
+    public void setEventId(UUID eventId) {
+        this.eventId = eventId;
+    }
+
+    public TicketStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TicketStatus status) {
+        this.status = status;
+    }
+
+    public Instant getPaidAt() {
+        return paidAt;
+    }
+
+    public void setPaidAt(Instant paidAt) {
+        this.paidAt = paidAt;
+    }
+
+    public Instant getReservedAt() {
+        return reservedAt;
+    }
+
+    public void setReservedAt(Instant reservedAt) {
+        this.reservedAt = reservedAt;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TicketEntity that = (TicketEntity) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+}
+```
+
+# Interface de adapters de event
+
+Na cricao de `EventDatabaseRepository` vamos fazer o mesmo processo...
+
+
+```java
+// Interface Adapter
+@Component
+public class EventDatabaseRepository implements EventRepository {
+
+    private final EventJpaRepository eventJpaRepository;
+
+    public EventDatabaseRepository(final EventJpaRepository EventJpaRepository) {
+        this.eventJpaRepository = Objects.requireNonNull(EventJpaRepository);
+    }
+
+    @Override
+    public Optional<Event> eventOfId(final EventId anId) {
+        Objects.requireNonNull(anId, "id cannot be null");
+        return this.eventJpaRepository.findById(UUID.fromString(anId.value()))
+                .map(EventEntity::toEvent);
+    }
+
+    @Override
+    @Transactional
+    public Event create(final Event Event) {
+        return this.eventJpaRepository.save(EventEntity.of(Event))
+                .toEvent();
+    }
+
+    @Override
+    @Transactional
+    public Event update(Event Event) {
+        return this.eventJpaRepository.save(EventEntity.of(Event))
+                .toEvent();
+    }
+
+    @Override
+    public void deleteAll() {
+        this.eventJpaRepository.deleteAll();
+    }
+}
+```
+
+- Em que vamos precisar ter um `EventEntity` que atravez dele será utilizado um `EventTicketEntity` com mapeamento one to many. 
+    - (Lembrando que ele faz parte do agregado)
+    - Como colocamos eager ele vai vir sempre carregado na query
+
+
+
+```java
+@Entity(name = "Event")
+@Table(name = "events")
+public class EventEntity {
+
+    @Id
+    private UUID id;
+
+    private String name;
+
+    private LocalDate date;
+
+    private int totalSpots;
+
+    private UUID partnerId;
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "event")
+    private Set<EventTicketEntity> tickets;
+
+    public EventEntity() {
+        this.tickets = new HashSet<>();
+    }
+
+    public EventEntity(UUID id, String name, LocalDate date, int totalSpots, UUID partnerId) {
+        this();
+        this.id = id;
+        this.name = name;
+        this.date = date;
+        this.totalSpots = totalSpots;
+        this.partnerId = partnerId;
+    }
+
+    public static EventEntity of(final Event event) {
+        final var entity = new EventEntity(
+                UUID.fromString(event.eventId().value()),
+                event.name().value(),
+                event.date(),
+                event.totalSpots(),
+                UUID.fromString(event.partnerId().value())
+        );
+
+        event.allTickets().forEach(entity::addTicket);
+
+        return entity;
+    }
+
+    public Event toEvent() {
+        return Event.restore(
+                this.id().toString(),
+                this.name(),
+                this.date().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                this.totalSpots(),
+                this.partnerId().toString(),
+                this.tickets().stream()
+                        .map(EventTicketEntity::toEventTicket)
+                        .collect(Collectors.toSet())
+        );
+    }
+
+    private void addTicket(final EventTicket ticket) {
+        this.tickets.add(EventTicketEntity.of(this, ticket));
+    }
+
+    public UUID id() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public LocalDate date() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public int totalSpots() {
+        return totalSpots;
+    }
+
+    public void setTotalSpots(int totalSpots) {
+        this.totalSpots = totalSpots;
+    }
+
+    public UUID partnerId() {
+        return partnerId;
+    }
+
+    public void setPartnerId(UUID partnerId) {
+        this.partnerId = partnerId;
+    }
+
+    public Set<EventTicketEntity> tickets() {
+        return tickets;
+    }
+
+    public void setTickets(Set<EventTicketEntity> tickets) {
+        this.tickets = tickets;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        EventEntity event = (EventEntity) o;
+        return Objects.equals(id, event.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+}
+
+```
+
+- Observacao do mapeamento one to many com `EventTicketEntity`
+- Criamos um restore em `Event` que sera um factory method que aceita um id e a lista de tickets
