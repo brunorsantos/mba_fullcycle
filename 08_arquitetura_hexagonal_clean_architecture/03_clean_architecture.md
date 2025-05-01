@@ -114,4 +114,57 @@ Na vcamanda de presenter temos a implentacao da interface (que pode estar na cam
     - Entrada e saida de controller/presenters
     - E nunca dominio
 
-# Usecases e suas controversias
+# Usecases e suas controversias.
+
+- Quem deve ser o responsavel pela criacao de caso de uso
+    - Linguagem moderndas contam com um container de injecao de dependencia (IOC), que geralmente é quem instancia
+    - controller tambem (Interface adapter)
+- Qual deve ser o ciclo de vida de um caso de uso?
+    - Geralmente um vez para um ator
+- Um caso de uso deve interagir com outros?
+    - Uncle Bob recomenda fortemente que nao
+    - Para evitar duplicidade de codigo
+    - Para caso de acao e reacao, utilizar evento para fazerem os dois casos de uso se comunicarem sem acoplamento
+        - Pois o acoplamento pode gerar problema
+        - Casos de uso sao o local onde mais pode ter alteracao, entao acoplamento é muito ruim
+- Como caso de uso deve trabalhar com multiplos repositorios
+    - Se for para obtencao de dado geralmente está ok
+    - Para gravacao vale a pena refletir se nao deveriam ser 2 casos de usos  
+- Posso utilizar libs externar nos meus casos de uso?
+    - Evitar igual se evita no domain
+- Casos de uso e interactors sao a mesma coisa?
+    - Na pratica sim.
+    - semanaticamente nao... Interactors é uma especificacao para o padrao command
+
+# DDD Patterns
+
+- Value objects
+    - Name, CPG, CNPJ
+    - Objeto cuja identificacao é pelos valores
+    - Vale a pena criar uma abstracao para atributos
+- Entities
+    - Indetificacao é o ID, que nao pode ser modificado
+    - Mesmo mudando atributos a entidade ainda será a mesma
+- Aggregate
+    - Termo que faz referencia a uma entidade que é um cluster de classes que representa o limite transacional entre todas elas (Persistir atomicamente)
+- Aggregate root
+    - Classe do agregado que expoe os metodos publico que controlam o comportamento do agregado
+    - todo aggretate rrot é uma entidade
+- Domain events
+    - Gerando por mutacoes em agregados que geram eventos que terao reacoes dentro do domain
+
+# Tratamento de eventos
+
+- Domain events (Podem ser publicados de 3 maneiras)
+    - Publish right away
+        - Logo apos a alteracao ja publica(Hoje em dia nao é muito utilizado, pois é melhor persitir antes)
+    - Publish after persistence
+        - Na implementacao do repositorio, garante que commitou e depois publica
+        - Maior contra: Fica aberto a pessoa que implementa chamar o publisher no aggregado
+        - Nao tem garantia que o evento foi enviado (Problema no brocker, shutsown)
+    - Publish through persistencia (Job o CDC)
+        - Usar camada e persistencia, obtendo dela por um job ou data capture
+- Domain Event publisher
+    - Interfaces que pode existir para envio de eventos
+- Queues gateways
+    - Interfaces que pode existir para envio de eventos
