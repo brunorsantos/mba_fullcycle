@@ -329,3 +329,236 @@
 
 # Exemplo pratico de commands
 
+[codigo fonte](https://github.com/devfullcycle/cqrs)
+
+Temos 2 camadas base `command` e `query`. 
+
+```
+internal/
+├── command/
+│   ├── create_product.go
+│   ├── place_order.go
+│   ├── domain/
+│   ├── event/
+│   └── repository/
+└── query/
+    └── find_product.go
+```
+
+Sendo na commando tem algumas divisoes. 
+
+No dominio temos as regras de negocio em `order.go`
+
+E temos an raiz os comandos como por exmplo o `create_product.go`
+
+```go
+package command
+
+import (
+	"github.com/devfullcycle/cqrs/internal/command/domain"
+	"github.com/devfullcycle/cqrs/pkg/events"
+)
+
+type CreateProductInput struct {
+	Name  string
+	Price float64
+}
+
+type CreateProductEventPayload struct {
+	ID    string
+	Name  string
+	Price float64
+}
+
+type CreateProductCommand struct {
+	Repository          domain.ProductRepository
+	EventDispatcher     events.EventDispatcherInterface
+	ProductCreatedEvent events.EventInterface
+}
+
+func (c *CreateProductCommand) Handle(input *CreateProductInput) {
+	product := domain.NewProduct(input.Name, input.Price)
+	c.Repository.Save(product)
+	c.ProductCreatedEvent.SetPayload(
+		CreateProductEventPayload{
+			ID:    product.ID,
+			Name:  product.Name,
+			Price: product.Price,
+		},
+	)
+	c.EventDispatcher.Dispatch(c.ProductCreatedEvent)
+}
+```
+
+- Injeta o repository, o disparador de eventos e estrutura para evento de ProductCreated
+- Usa as regras de negocio em domain para criar um product (Usando modelo rico)
+- Salva o modelo rico usando repository
+- Dispara o evento que o produto foi criado
+- Metodo handle nao retorna nada
+
+
+No repository temos
+
+```go
+package repository
+
+import (
+	"database/sql"
+
+	"github.com/devfullcycle/cqrs/internal/command/domain"
+)
+
+type ProductRepositoryMysql struct {
+	DB *sql.DB
+}
+
+func (r *ProductRepositoryMysql) FindByID(id string) *domain.Product {
+	var product domain.Product
+	r.DB.QueryRow("SELECT id, name, price FROM products WHERE id = ?", id).Scan(&product.ID, &product.Name, &product.Price)
+	return &product
+}
+
+func (r *ProductRepositoryMysql) Save(product *domain.Product) {
+	r.DB.Exec("INSERT INTO products (id, name, price) VALUES (?, ?, ?)", product.ID, product.Name, product.Price)
+}
+```
+
+- A utilizacao de Mysql para gravar esses produtos
+- O findById vai ser utilizado apenas como pre requisito para gravar outra coisa
+
+
+
+O handler que consume o evento vai ser responsavel por gravar em outro banco de dados que vai ser utilizado como leitura, nessa caso mongoDb
+
+```go
+// Handle is a method that implements EventHandlerInterface
+// persist data using mongodb
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"log"
+	"sync"
+
+	"github.com/devfullcycle/cqrs/pkg/events"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type ProductCreatedEventHandler struct {
+	MongoDBConnection *mongo.Client
+}
+
+type ProductCreatedEventData struct {
+	ID    string
+	Name  string
+	Price float64
+}
+
+func (h *ProductCreatedEventHandler) Handle(event events.EventInterface, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// Unmarshal the event data into a struct
+	var eventData ProductCreatedEventData
+	payload, ok := event.GetPayload().([]byte)
+	if !ok {
+		log.Printf("Error getting event payload as []byte")
+		return
+	}
+	err := json.Unmarshal(payload, &eventData)
+	if err != nil {
+		log.Printf("Error unmarshalling event data: %v", err)
+		return
+	}
+
+	// Insert the event data into MongoDB
+	collection := h.MongoDBConnection.Database("ecommerce").Collection("products")
+
+	// use id event as id mongodb
+	_, err = collection.InsertOne(context.Background(),
+		bson.M{
+			"_id":   eventData.ID,
+			"name":  eventData.Name,
+			"price": eventData.Price,
+		})
+	if err != nil {
+		log.Printf("Error inserting event data into MongoDB: %v", err)
+		return
+	}
+}
+
+```
+
+# Exemplo pratico de queries
+
+Como essa parte serve apenas para consulta, nao vai ter regra de dominio dentro.
+
+sendo assim vamos ter apenas um file `find_product.go`
+
+
+```go
+package query
+
+import (
+	"context"
+	"fmt"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+type FindProductQuery struct {
+	mongoClient *mongo.Client
+}
+
+type Product struct {
+	ID    string  `bson:"_id" json:"id"`
+	Name  string  `json:"name"`
+	Price float64 `json:"price"`
+}
+
+func NewFindProductQuery(mongoClient *mongo.Client) *FindProductQuery {
+	return &FindProductQuery{mongoClient: mongoClient}
+}
+
+// find all products
+func (q *FindProductQuery) FindAll() ([]*Product, error) {
+	products := []*Product{}
+
+	collection := q.mongoClient.Database("ecommerce").Collection("products")
+	cursor, err := collection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+
+	for cursor.Next(context.TODO()) {
+		product := &Product{}
+		if err := cursor.Decode(product); err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		products = append(products, product)
+	}
+	return products, nil
+}
+
+// find product by id
+func (q *FindProductQuery) FindByID(id string) (*Product, error) {
+	product := &Product{}
+	collection := q.mongoClient.Database("ecommerce").Collection("products")
+	f := collection.FindOne(context.TODO(), bson.M{"_id": id})
+	if err := f.Decode(product); err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return product, nil
+}
+
+```
+
+- Diretamente injeta um mongoClient
+- Metodos `FindByID` e `FindAll` que retorna diretamente um classe mapeada do banco product.
+
