@@ -298,7 +298,10 @@ Um loop infinito simula o consumo de mensagens de uma fila:
   - Resiliência
 - A arquitetura mostrada é base para construção de orquestradores robustos.
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 # Aws Step functions
 
 ## 🧭 O que são Step Functions?
