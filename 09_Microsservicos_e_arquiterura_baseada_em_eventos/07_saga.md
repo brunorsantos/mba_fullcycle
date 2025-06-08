@@ -298,3 +298,130 @@ Um loop infinito simula o consumo de mensagens de uma fila:
   - Resiliência
 - A arquitetura mostrada é base para construção de orquestradores robustos.
 
+
+# Aws Step functions
+
+## 🧭 O que são Step Functions?
+
+- Serviço da **AWS** que permite **criar e gerenciar fluxos de execução (workflows)**.
+- Funciona como um **orquestrador de microsserviços**, ideal para coordenar steps de uma **Saga**.
+- Permite executar lógicas condicionais, paralelas, de erro e compensação.
+
+---
+
+## 🔧 Funcionalidades principais
+
+- **Modelagem visual** dos fluxos com desenho de steps.
+- **Rastreamento de estado**: registra o status de cada etapa.
+- **Reações a eventos**:
+  - Step 1 finaliza → grava no DynamoDB
+  - Step 2 inicia → chama função Lambda
+  - Step 3 → aciona outro serviço, etc.
+- **Condicional**: define comportamentos diferentes para sucesso ou falha de um step.
+
+---
+
+## 🧪 Exemplo prático
+
+Workflow de um pedido:
+
+1. Verifica estoque
+2. Cobra cliente
+3. Envia produto
+
+Se falhar em alguma etapa:
+
+- Ex: falha na cobrança → atualiza estoque e finaliza com erro
+
+---
+
+## ⚙️ Integração com serviços AWS
+
+- Step Functions orquestram serviços como:
+  - **Lambda**
+  - **DynamoDB**
+  - **S3**
+  - **SNS/SQS**
+  - **Glue, Athena, Batch**, entre outros
+- Muito utilizadas também para:
+  - **ETL**
+  - **Processos de segurança**
+  - **Execução paralela de workloads**
+
+---
+
+## ⚠️ Custo e lock-in
+
+- **Cobrança por mudança de estado**, não por execução completa.
+  - Exemplo: 5 passos por transação × 10 mil execuções = 50 mil mudanças de estado
+- **Free Tier** inclui 4 mil mudanças de estado/mês
+- **Lock-in forte**:
+  - Integração profunda com serviços AWS dificulta a portabilidade
+  - Planeje bem antes de adotar
+
+---
+
+## ✅ Quando vale a pena?
+
+- Se você já usa intensamente **serviços AWS**
+- Quando deseja facilidade na **orquestração de microsserviços**
+- Quando precisa de **resiliência, escalabilidade e rastreamento detalhado**
+
+---
+
+## 📌 Considerações finais
+
+- Ferramenta poderosa, mas com custo proporcional à conveniência.
+- Ideal para **ambientes cloud-native** integrados à AWS.
+- Avalie o custo-benefício e os riscos de dependência antes de adotar.
+
+# Microservices.io
+
+## 🧭 Recomendação de Referência: [microservices.io](https://microservices.io)
+
+- Site criado por **Chris Richardson**, autor renomado na área de arquitetura de microsserviços.
+- Contém **um catálogo completo de padrões arquiteturais**, incluindo:
+  - Padrões de decomposição
+  - Padrões de integração
+  - Padrões de infraestrutura
+  - Padrões de transação e consistência
+
+---
+
+## 🔁 Padrões relacionados a Sagas
+
+- O site traz exemplos e explicações de:
+  - **Saga Pattern**
+    - Com **coreografia**
+    - Com **orquestração**
+  - **Event Sourcing**
+  - **Transactional Outbox**
+
+### 🧠 Cada padrão inclui:
+- **Contexto**: onde se aplica
+- **Problema**: o que precisa ser resolvido
+- **Solução**: como o padrão ataca o problema
+- **Resultado esperado**
+
+---
+
+## 🧩 Ferramenta citada: Eventuate
+
+- Criada por Chris Richardson
+- Plataforma que oferece:
+  - Suporte para **gerenciamento de Sagas**
+  - Implementação de **Event Sourcing**
+  - Gerenciamento de transações distribuídas
+
+---
+
+## 📌 Considerações importantes
+
+- O site **não deve ser seguido cegamente** — é uma interpretação da experiência do autor.
+- Serve como **guia prático e aprofundado** para:
+  - Entender a complexidade da orquestração
+  - Conhecer soluções já existentes e maduras no mercado
+- Ideal para quem deseja:
+  - Expandir conhecimento
+  - Avaliar abordagens antes de "reinventar a roda"
+
