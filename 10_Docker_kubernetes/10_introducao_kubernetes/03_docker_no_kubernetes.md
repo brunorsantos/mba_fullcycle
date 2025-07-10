@@ -1,0 +1,5 @@
+- No passado o container runtime padrão do Kubernetes era o Docker
+- O Kubernetes começou a padronizar a interface dos containers runtime
+- Docker não fez essa padronização. Ele usava um componente que era difícil de manter chamado dockershin
+- Por conta disso, Kubernetes parou de utilizar o Docker como container runtime
+- Isso não impede que as imagens geradas com docker, rodem no Kubernetes
