@@ -15,3 +15,10 @@ Comunicar = Tornar comum
 
 
 Somos reponsaveis por aquilo que emitimos
+
+## Exercicios para diccao
+
+- Bagre branco, branco bagre
+- Casa suja, chao sujo
+
+
