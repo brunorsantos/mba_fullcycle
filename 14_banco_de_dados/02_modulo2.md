@@ -231,6 +231,24 @@ mensagens via FIFO broadcast (First In First Out). Assim, todos os nós
 entregam a mesma sequência de mensagens na mesma ordem.
 Problema: nó líder é um ponto único de falha.
 Soluções:
-1) Intervenção humana - operador humano seleciona novo líder e reconfigura
-cada nó seguidor para seguir o novo líder.
-2) Algoritmo de Consenso - transferência automática de lideranç
+
+1) Intervenção humana - operador humano seleciona novo líder e reconfigura cada nó seguidor para seguir o novo líder.
+2) Algoritmo de Consenso - transferência automática de liderança de um nó para outro.
+
+- Consenso: é um acordo que muitos nós alcançam sobre um valor.
+- Este valor é a próxima mensagem a ser entregue (Total Order Broadcast).
+- Assim que um nó decide sobre uma certa ordem da mensagem, os demais nós disponíveis decidirão a mesma ordem.
+- Consenso e Total Order Broadcast são formalmente equivalentes.
+- Um ou mais nós propõem um valor e o algoritmo de consenso decide entre os valores propostos.
+
+## Algoritmos de consenso
+
+![alt text](image-60.png)
+
+![alt text](image-61.png)
+
+
+- Multi Paxos, Raft, VSR e Zab usam líderes para sequenciar mensagens.
+- Detector de falha no líder é timeout.
+- Garante 1 único líder por termo (split-brain).
+- Precisa de quorum para eleger um líder no termo.
