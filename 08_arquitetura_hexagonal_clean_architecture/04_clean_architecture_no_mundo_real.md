@@ -1,4 +1,4 @@
-Link do [repo](https://github.com/devfullcycle/MBA-hexagonal-architecture) a ser refatorado tendo como origem o conteudo anterior do modulo de arquiteura hexagonal na sua branch correspondente
+Link do [repo](https://github.com/devfullcycle/MBA-hexagonal-architecture/tree/clean-arch) a ser refatorado tendo como origem o conteudo anterior do modulo de arquiteura hexagonal na sua branch correspondente
 
 Utilizando java mais spring é dificil fazer toda separacao proposta na teoria, pois o spring tenta cobrir de ponta a pontas com funcionalidades. Gestao de dependencias, web router, persistencia...
 

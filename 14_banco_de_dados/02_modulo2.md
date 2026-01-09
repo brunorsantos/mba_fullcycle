@@ -252,3 +252,8 @@ Soluções:
 - Detector de falha no líder é timeout.
 - Garante 1 único líder por termo (split-brain).
 - Precisa de quorum para eleger um líder no termo.
+
+> Meu entendimento: Precisa tem um lider para manter a ordenacao das mensagens utilizando FIFO, o que vai preservar muito a consistencia entre os nós. O algotimo de consenso vai definir quem é o lider alem da ordenacao das mensagem. Um quorum é utilizado para isso.
+
+# Raft
+
